@@ -1,0 +1,228 @@
+/* ==========================================================================
+   TeacherStudio Game Theme Engine Styles (9 Educational Themes)
+   ========================================================================== */
+
+/* Game viewport container */
+.game-viewport {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  user-select: none;
+  background-color: var(--theme-bg, #FFFFFF);
+  color: var(--theme-text, #242424);
+  font-family: var(--theme-font, var(--font-family-base));
+}
+
+/* Aspect ratio containers */
+.viewport-16-9 { aspect-ratio: 16 / 9; }
+.viewport-4-3 { aspect-ratio: 4 / 3; }
+.viewport-1-1 { aspect-ratio: 1 / 1; }
+.viewport-mobile { aspect-ratio: 9 / 16; max-width: 400px; }
+.viewport-fit { width: 100%; height: 100%; }
+
+/* Game Shell Structure */
+.game-header {
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--theme-header-bg, rgba(255, 255, 255, 0.85));
+  backdrop-filter: blur(4px);
+  border-bottom: 2px solid var(--theme-border, #E4E4DF);
+  z-index: 10;
+}
+
+.game-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  position: relative;
+  overflow-y: auto;
+}
+
+.game-footer {
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--theme-footer-bg, rgba(255, 255, 255, 0.85));
+  border-top: 1px solid var(--theme-border, #E4E4DF);
+  z-index: 10;
+}
+
+/* 1. Theme: Minimal */
+.theme-minimal {
+  --theme-bg: #FAFAFA;
+  --theme-surface: #FFFFFF;
+  --theme-text: #242424;
+  --theme-text-subtle: #6B6B67;
+  --theme-primary: #3F5F55;
+  --theme-border: #E4E4DF;
+  --theme-accent: #5F8276;
+}
+
+/* 2. Theme: Classroom */
+.theme-classroom {
+  --theme-bg: #223326;
+  --theme-surface: #2E4233;
+  --theme-text: #F4F7F4;
+  --theme-text-subtle: #A7C2AB;
+  --theme-primary: #D1A153;
+  --theme-border: #3D5744;
+  --theme-header-bg: rgba(34, 51, 38, 0.95);
+  --theme-footer-bg: rgba(34, 51, 38, 0.95);
+}
+.theme-classroom .game-card-theme, .theme-classroom .btn-game {
+  border: 2px dashed #4E6E57;
+  background-color: #273A2C;
+  color: #FFFFFF;
+}
+
+/* 3. Theme: Nature */
+.theme-nature {
+  --theme-bg: #F4F9F2;
+  --theme-surface: #FFFFFF;
+  --theme-text: #1F3D26;
+  --theme-text-subtle: #4D7856;
+  --theme-primary: #2F7C48;
+  --theme-border: #C8E3C6;
+  --theme-header-bg: rgba(255, 255, 255, 0.9);
+  --theme-footer-bg: rgba(255, 255, 255, 0.9);
+}
+
+/* 4. Theme: Ocean */
+.theme-ocean {
+  --theme-bg: #EFF8FC;
+  --theme-surface: #FFFFFF;
+  --theme-text: #12344D;
+  --theme-text-subtle: #416B87;
+  --theme-primary: #0284C7;
+  --theme-border: #BAE6FD;
+  --theme-header-bg: rgba(255, 255, 255, 0.9);
+  --theme-footer-bg: rgba(255, 255, 255, 0.9);
+}
+
+/* 5. Theme: Space */
+.theme-space {
+  --theme-bg: #0F172A;
+  --theme-surface: #1E293B;
+  --theme-text: #F8FAFC;
+  --theme-text-subtle: #94A3B8;
+  --theme-primary: #818CF8;
+  --theme-border: #334155;
+  --theme-header-bg: rgba(15, 23, 42, 0.95);
+  --theme-footer-bg: rgba(15, 23, 42, 0.95);
+}
+
+/* 6. Theme: Science */
+.theme-science {
+  --theme-bg: #F0FDF4;
+  --theme-surface: #FFFFFF;
+  --theme-text: #14532D;
+  --theme-text-subtle: #166534;
+  --theme-primary: #15803D;
+  --theme-border: #BBF7D0;
+  --theme-header-bg: rgba(255, 255, 255, 0.9);
+  --theme-footer-bg: rgba(255, 255, 255, 0.9);
+}
+
+/* 7. Theme: Mathematics */
+.theme-mathematics {
+  --theme-bg: #F8FAFC;
+  --theme-surface: #FFFFFF;
+  --theme-text: #1E293B;
+  --theme-text-subtle: #64748B;
+  --theme-primary: #3B82F6;
+  --theme-border: #E2E8F0;
+  --theme-header-bg: rgba(255, 255, 255, 0.9);
+  --theme-footer-bg: rgba(255, 255, 255, 0.9);
+}
+
+/* 8. Theme: Vietnam */
+.theme-vietnam {
+  --theme-bg: #FEF2F2;
+  --theme-surface: #FFFFFF;
+  --theme-text: #7F1D1D;
+  --theme-text-subtle: #991B1B;
+  --theme-primary: #DC2626;
+  --theme-accent: #FBBF24;
+  --theme-border: #FECACA;
+  --theme-header-bg: rgba(255, 255, 255, 0.9);
+  --theme-footer-bg: rgba(255, 255, 255, 0.9);
+}
+
+/* 9. Theme: Festival */
+.theme-festival {
+  --theme-bg: #FFFBEB;
+  --theme-surface: #FFFFFF;
+  --theme-text: #78350F;
+  --theme-text-subtle: #92400E;
+  --theme-primary: #D97706;
+  --theme-border: #FDE68A;
+  --theme-header-bg: rgba(255, 255, 255, 0.9);
+  --theme-footer-bg: rgba(255, 255, 255, 0.9);
+}
+
+/* Common Interactive Game Controls */
+.game-option-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 18px;
+  margin-bottom: 12px;
+  background-color: var(--theme-surface, #FFFFFF);
+  border: 2px solid var(--theme-border, #E4E4DF);
+  border-radius: var(--radius-lg);
+  color: var(--theme-text, #242424);
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+}
+
+.game-option-btn:hover {
+  border-color: var(--theme-primary, #3F5F55);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.game-option-btn.selected {
+  border-color: var(--theme-primary, #3F5F55);
+  background-color: rgba(63, 95, 85, 0.08);
+}
+
+.game-option-btn.correct {
+  border-color: #4D7A5A !important;
+  background-color: #EDF5F0 !important;
+  color: #1E462B !important;
+}
+
+.game-option-btn.incorrect {
+  border-color: #B45454 !important;
+  background-color: #FDF1F1 !important;
+  color: #5C1D1D !important;
+}
+
+.game-option-letter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: rgba(0, 0, 0, 0.06);
+  font-weight: 600;
+  flex-shrink: 0;
+}

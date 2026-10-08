@@ -1,0 +1,19 @@
+{
+  "name": "teacher-studio",
+  "version": "1.0.0",
+  "description": "TeacherStudio - Quiet Professional web application for primary school teachers to create interactive games",
+  "type": "module",
+  "scripts": {
+    "start": "npx serve .",
+    "test": "node test/test-engines.js"
+  },
+  "keywords": [
+    "education",
+    "teacher",
+    "interactive-games",
+    "vietnam",
+    "classroom"
+  ],
+  "author": "TeacherStudio Team",
+  "license": "MIT"
+}
