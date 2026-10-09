@@ -4,6 +4,8 @@
 
 import { BaseGame } from '../base-game.js';
 import { Sound } from '../audio-synth.js';
+import { bindSpeakButtons } from '../../core/speech.js';
+import { questionImageHtml, questionTextRow, teacherBadgeHtml } from '../question-media.js';
 
 export class TrueFalseGame extends BaseGame {
   start() {
@@ -44,9 +46,9 @@ export class TrueFalseGame extends BaseGame {
       </div>
 
       <div class="game-body" style="max-width: 600px; margin: 0 auto; width: 100%; text-align: center;">
-        <div style="font-size: 22px; font-weight: 600; line-height: 1.4; margin-bottom: 32px; color: var(--theme-text);">
-          "${q.question}"
-        </div>
+        ${questionImageHtml(q)}
+        ${teacherBadgeHtml(q, this.options.teacherMode)}
+        ${questionTextRow(q, 22, this.options.readAloud !== false)}
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 100%;">
           <button class="btn tf-btn" id="btn-true" style="padding: 32px 20px; font-size: 24px; font-weight: 700; border-radius: 16px; border: 3px solid #4D7A5A; background-color: rgba(77, 122, 90, 0.1); color: #2D5838;">
@@ -71,6 +73,7 @@ export class TrueFalseGame extends BaseGame {
 
     btnTrue.onclick = () => this.selectAnswer(0);
     btnFalse.onclick = () => this.selectAnswer(1);
+    bindSpeakButtons(this.viewportEl);
   }
 
   selectAnswer(choice) {

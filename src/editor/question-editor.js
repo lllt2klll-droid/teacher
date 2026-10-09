@@ -4,7 +4,9 @@
 
 import { ContentEngine } from '../core/content-engine.js';
 import { BulkImportModal } from '../content/bulk-import-modal.js';
+import { Speech } from '../core/speech.js';
 import { Icons } from '../ui/icons.js';
+import { Notifications } from '../ui/notifications.js';
 
 export const QuestionEditor = {
   render(container, { content, onQuestionsChange }) {
@@ -55,6 +57,33 @@ export const QuestionEditor = {
         <div class="form-group">
           <label class="form-label">Nội dung câu hỏi *</label>
           <textarea class="textarea q-field" data-field="question" style="min-height: 60px;">${q.question || ''}</textarea>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Ảnh minh họa (tùy chọn, hiển thị trong game & file xuất)</label>
+          ${q.image ? `
+            <div style="margin-bottom: 8px; text-align: center;">
+              <img src="${q.image}" alt="Minh họa" style="max-width: 100%; max-height: 150px; border-radius: 8px; border: 1px solid var(--color-border);">
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <label class="btn btn-secondary btn-sm" style="cursor: pointer;">🖼️ Đổi ảnh
+                <input type="file" class="q-img-input" accept="image/*" style="display: none;">
+              </label>
+              <button class="btn btn-secondary btn-sm btn-del-img" style="color: var(--color-danger);">✕ Xóa ảnh</button>
+            </div>
+          ` : `
+            <label class="btn btn-secondary btn-sm" style="cursor: pointer;">🖼️ Thêm ảnh minh họa
+              <input type="file" class="q-img-input" accept="image/*" style="display: none;">
+            </label>
+            <span style="font-size: 12px; color: var(--color-text-secondary); margin-left: 8px;">JPG/PNG, tự nén gọn để file xuất vẫn nhẹ</span>
+          `}
+        </div>
+
+        <div class="form-group">
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <button class="btn btn-secondary btn-sm btn-hear-q">🔊 Nghe thử câu hỏi</button>
+            <span style="font-size: 12px; color: var(--color-text-secondary);">Học sinh lớp 1-2 cũng nghe được khi chơi</span>
+          </div>
         </div>
 
         <div class="form-group">
@@ -171,6 +200,51 @@ export const QuestionEditor = {
           }
         };
       });
+
+      // Image upload (nén trước khi lưu để file xuất HTML vẫn nhẹ)
+      const imgInput = container.querySelector('.q-img-input');
+      if (imgInput) {
+        imgInput.onchange = async (e) => {
+          const file = e.target.files && e.target.files[0];
+          if (!file || !questions[selectedQIndex]) return;
+          try {
+            const dataUrl = await ContentEngine.compressImageFile(file, 800, 0.72);
+            questions[selectedQIndex].image = dataUrl;
+            renderView();
+            onQuestionsChange(questions);
+            Notifications.success('Đã thêm ảnh minh họa!');
+          } catch (err) {
+            Notifications.warning('Không đọc được file ảnh. Cô chọn file JPG/PNG khác nhé.');
+          }
+        };
+      }
+
+      // Delete image
+      const delImgBtn = container.querySelector('.btn-del-img');
+      if (delImgBtn) {
+        delImgBtn.onclick = () => {
+          if (questions[selectedQIndex]) {
+            questions[selectedQIndex].image = '';
+            renderView();
+            onQuestionsChange(questions);
+          }
+        };
+      }
+
+      // Hear question (TTS giọng Việt)
+      const hearBtn = container.querySelector('.btn-hear-q');
+      if (hearBtn) {
+        hearBtn.onclick = () => {
+          const q = questions[selectedQIndex];
+          if (!q || !q.question.trim()) {
+            Notifications.warning('Cô nhập nội dung câu hỏi trước nhé.');
+            return;
+          }
+          if (!Speech.speak(q.question)) {
+            Notifications.warning('Trình duyệt này không hỗ trợ đọc to. Cô dùng Chrome hoặc Edge nhé.');
+          }
+        };
+      }
     };
 
     renderView();

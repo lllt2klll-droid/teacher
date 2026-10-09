@@ -4,6 +4,8 @@
 
 import { BaseGame } from '../base-game.js';
 import { Sound } from '../audio-synth.js';
+import { bindSpeakButtons } from '../../core/speech.js';
+import { questionImageHtml, questionTextRow, teacherBadgeHtml } from '../question-media.js';
 
 export class QuizGame extends BaseGame {
   start() {
@@ -43,9 +45,9 @@ export class QuizGame extends BaseGame {
       </div>
 
       <div class="game-body" style="max-width: 680px; margin: 0 auto; width: 100%;">
-        <div style="font-size: 20px; font-weight: 600; text-align: center; margin-bottom: 24px; color: var(--theme-text); line-height: 1.4;">
-          ${q.question}
-        </div>
+        ${questionImageHtml(q)}
+        ${teacherBadgeHtml(q, this.options.teacherMode)}
+        ${questionTextRow(q, 20, this.options.readAloud !== false)}
 
         <div class="game-options-list" style="width: 100%;">
           ${(q.answers || []).map((ans, idx) => `
@@ -69,6 +71,7 @@ export class QuizGame extends BaseGame {
 
     // Bind click handlers
     const optionBtns = this.viewportEl.querySelectorAll('.game-option-btn');
+    bindSpeakButtons(this.viewportEl);
     optionBtns.forEach(btn => {
       btn.onclick = () => {
         const idx = parseInt(btn.getAttribute('data-index'), 10);

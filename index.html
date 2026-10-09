@@ -6,10 +6,11 @@
   <title>TeacherStudio - Không gian sáng tạo trò chơi học tập</title>
   <meta name="description" content="Ứng dụng web chuyên nghiệp dành cho giáo viên tiểu học tạo trò chơi và hoạt động học tập tương tác, xuất file HTML độc lập không cần internet.">
   
-  <!-- Typography: Be Vietnam Pro -->
+  <!-- Typography: Be Vietnam Pro (non-blocking: mất mạng vẫn mở app ngay bằng font hệ thống) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet"></noscript>
 
   <!-- Design System Styles -->
   <link rel="stylesheet" href="./src/styles/tokens.css">

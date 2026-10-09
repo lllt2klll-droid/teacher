@@ -125,6 +125,14 @@ export const ExportEngine = {
     .big-timer { font-size: 72px; font-weight: 700; font-family: monospace; letter-spacing: 2px;
       color: var(--theme-primary); margin-bottom: 24px; padding: 16px 36px;
       background: var(--theme-surface); border: 3px solid var(--theme-border); border-radius: 20px; }
+    .q-img { max-width: 100%; border-radius: 12px; border: 2px solid var(--theme-border);
+      object-fit: contain; background: #fff; display: block; margin: 0 auto 16px; }
+    .gv-badge { display: inline-block; font-size: 13px; background: #FEF3C7; color: #92400E;
+      border: 1px dashed #D97706; border-radius: 8px; padding: 6px 12px; margin-bottom: 12px; }
+    .fs-btn { position: absolute; top: 10px; right: 10px; z-index: 50; opacity: .65;
+      padding: 6px 10px; font-size: 13px; border-radius: 8px; border: 1px solid var(--theme-border);
+      background: var(--theme-surface); color: inherit; cursor: pointer; }
+    .fs-btn:hover { opacity: 1; }
     .flash-inner { position: relative; width: 100%; height: 100%; text-align: center;
       transition: transform 0.5s ease; transform-style: preserve-3d;
       border-radius: 16px; border: 2px solid var(--theme-border); }
@@ -145,6 +153,39 @@ export const ExportEngine = {
     var themeColors = ${themeJson};
     var GAME_TYPE = ${JSON.stringify(gameType)};
     var PROFILE = ${JSON.stringify(prof)};
+    var READ_ALOUD = !(project.settings && project.settings.readAloud === false);
+    var TEACHER_MODE = !!((project.settings && project.settings.teacherMode) || /chedo=gv/.test(location.search));
+
+    // Đọc to giọng Việt (Web Speech API, không cần mạng/cài thêm)
+    function speak(t) {
+      try {
+        if (!window.speechSynthesis) return;
+        speechSynthesis.cancel();
+        var u = new SpeechSynthesisUtterance(String(t || '').slice(0, 500));
+        u.lang = 'vi-VN'; u.rate = 0.95;
+        speechSynthesis.speak(u);
+      } catch (e) {}
+    }
+    function qImg(q, h) {
+      if (!q || !q.image) return '';
+      return '<img class="q-img" style="max-height:' + (h || 180) + 'px;" src="' + q.image + '" alt="Minh hoa cau hoi">';
+    }
+    function speakBtn(t) {
+      if (!READ_ALOUD || !window.speechSynthesis) return '';
+      return '<button class="btn btn-secondary btn-sm" data-speak="' + esc(t) + '" title="Doc to cau hoi">🔊 Đọc</button>';
+    }
+    function gvBadge(q) {
+      if (!TEACHER_MODE || !q || !q.answers) return '';
+      var L = String.fromCharCode(65 + (q.correctAnswer || 0));
+      return '<div><span class="gv-badge">👩‍🏫 Đáp án GV: ' + L + (q.explanation ? ' — ' + esc(q.explanation) : '') + '</span></div>';
+    }
+    function toggleFS() {
+      try {
+        var el = document.getElementById('standalone-root');
+        if (!document.fullscreenElement) { if (el.requestFullscreen) el.requestFullscreen(); }
+        else { if (document.exitFullscreen) document.exitFullscreen(); }
+      } catch (e) {}
+    }
 
     function esc(s) {
       return String(s == null ? '' : s)
@@ -281,7 +322,8 @@ export const ExportEngine = {
           root.innerHTML = header('Quiz - Cau ' + (qIndex + 1) + ' / ' + questions.length,
             '<span>Diem: <strong>' + score + '</strong></span>') +
             '<div class="game-body" style="max-width:680px;width:100%;margin:0 auto;">' +
-            '<div class="game-q-text">' + esc(q.question) + '</div><div style="width:100%;">' +
+            qImg(q) + gvBadge(q) +
+            '<div style="display:flex;gap:8px;align-items:flex-start;"><div class="game-q-text" style="flex:1;">' + esc(q.question) + '</div>' + speakBtn(q.question) + '</div><div style="width:100%;">' +
             (q.answers || []).map(function (a, i) {
               return '<button class="game-option-btn" data-i="' + i + '"><span class="game-option-letter">' +
                 String.fromCharCode(65 + i) + '</span><span>' + esc(a) + '</span></button>';
@@ -320,7 +362,8 @@ export const ExportEngine = {
           root.innerHTML = header('Menh de ' + (qIndex + 1) + ' / ' + questions.length,
             '<span>Diem: <strong>' + score + '</strong></span>') +
             '<div class="game-body text-center" style="max-width:600px;margin:0 auto;width:100%;">' +
-            '<div class="game-q-text">“' + esc(q.question) + '”</div>' +
+            qImg(q) + gvBadge(q) +
+            '<div style="display:flex;gap:8px;align-items:flex-start;"><div class="game-q-text" style="flex:1;">“' + esc(q.question) + '”</div>' + speakBtn(q.question) + '</div>' +
             '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;width:100%;">' +
             '<button class="tf-btn" id="bT" style="border:3px solid #4D7A5A;color:#2D5838;background:rgba(77,122,90,.1);">✓ DUNG<div style="font-size:12px;font-weight:400;">(Phim 1 / ←)</div></button>' +
             '<button class="tf-btn" id="bF" style="border:3px solid #B45454;color:#872828;background:rgba(180,84,84,.1);">✗ SAI<div style="font-size:12px;font-weight:400;">(Phim 2 / →)</div></button>' +
@@ -345,7 +388,7 @@ export const ExportEngine = {
       /* ---- FLASHCARD ---- */
       function runFlashcard() {
         var cards = questions.map(function (q) {
-          return { f: q.front || q.question,
+          return { f: q.front || q.question, img: q.image || '',
             b: q.back || ((q.answers && q.answers[q.correctAnswer]) || q.explanation || 'Dap an') }; });
         if (!cards.length) cards = [{ f: 'Chua co the hoc', b: 'Hay them cau hoi trong TeacherStudio' }];
         var idx = 0, flip = false, done = 0;
@@ -357,15 +400,19 @@ export const ExportEngine = {
             '<div class="game-body text-center" style="max-width:520px;margin:0 auto;width:100%;">' +
             '<div id="fc" style="perspective:1000px;width:100%;height:260px;cursor:pointer;">' +
             '<div id="fci" class="flash-inner">' +
-            '<div style="position:absolute;width:100%;height:100%;backface-visibility:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;background:var(--theme-surface);border-radius:16px;">' +
-            '<span class="badge badge-primary">Mat truoc</span><div style="font-size:20px;font-weight:600;margin-top:8px;">' + esc(c.f) + '</div></div>' +
+            '<div style="position:absolute;width:100%;height:100%;backface-visibility:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;background:var(--theme-surface);border-radius:16px;overflow-y:auto;">' +
+            '<span class="badge badge-primary">Mat truoc</span>' +
+            (c.img ? '<img class="q-img" style="max-height:100px;margin:8px auto;" src="' + c.img + '" alt="Minh hoa">' : '') +
+            '<div style="font-size:20px;font-weight:600;margin-top:8px;">' + esc(c.f) + '</div></div>' +
             '<div style="position:absolute;width:100%;height:100%;backface-visibility:hidden;transform:rotateY(180deg);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;background:rgba(63,95,85,.1);border-radius:16px;">' +
             '<span class="badge badge-success">Mat sau</span><div style="font-size:20px;font-weight:600;margin-top:8px;">' + esc(c.b) + '</div></div>' +
             '</div></div>' +
             '<div style="display:flex;gap:12px;justify-content:center;margin-top:24px;flex-wrap:wrap;">' +
             '<button class="btn btn-secondary" id="bP">← Truoc</button>' +
             '<button class="btn btn-primary" id="bF">🔄 Lat the</button>' +
-            '<button class="btn btn-secondary" id="bN">Sau →</button></div></div>' +
+            '<button class="btn btn-secondary" id="bN">Sau →</button>' +
+            (READ_ALOUD ? '<button class="btn btn-secondary btn-sm" data-speak="' + esc(c.f + '. ' + c.b) + '">🔊 Đọc</button>' : '') +
+            '</div></div>' +
             footer('', 'Nhan ✓ khi da thuoc');
           function tg() { flip = !flip; Sound.playClick();
             document.getElementById('fci').style.transform = flip ? 'rotateY(180deg)' : 'rotateY(0deg)'; }
@@ -578,7 +625,8 @@ export const ExportEngine = {
                 (open[i] ? 'opacity:0;pointer-events:none;' : '') + '">' + (i + 1) + '</div>'; }).join('') +
             '</div></div>' +
             '<div style="flex:1;min-width:260px;background:var(--theme-surface);padding:20px;border-radius:12px;border:1px solid var(--theme-border);">' +
-            '<div class="game-q-text" style="font-size:18px;">' + esc(q.question) + '</div>' +
+            qImg(q, 140) + gvBadge(q) +
+            '<div style="display:flex;gap:8px;align-items:flex-start;"><div class="game-q-text" style="font-size:18px;flex:1;">' + esc(q.question) + '</div>' + speakBtn(q.question) + '</div>' +
             (q.answers || []).map(function (a, i) {
               return '<button class="game-option-btn" data-i="' + i + '"><span class="game-option-letter">' +
                 String.fromCharCode(65 + i) + '</span><span>' + esc(a) + '</span></button>'; }).join('') +
@@ -691,7 +739,8 @@ export const ExportEngine = {
             '<div style="position:absolute;left:calc(50% + ' + (rope * 3) + 'px);width:28px;height:28px;background:#FBBF24;border:3px solid #78350F;border-radius:50%;transform:translateX(-50%);transition:left .5s;">🎀</div></div>' +
             '<div style="width:100%;background:var(--theme-surface);border:2px solid var(--theme-border);border-radius:12px;padding:20px;text-align:center;">' +
             '<div style="color:' + tc + ';font-weight:700;margin-bottom:8px;">' + tn + ' tra loi:</div>' +
-            '<div class="game-q-text" style="font-size:20px;">' + esc(q.question) + '</div>' +
+            qImg(q, 140) + gvBadge(q) +
+            '<div style="display:flex;gap:8px;align-items:flex-start;"><div class="game-q-text" style="font-size:20px;flex:1;">' + esc(q.question) + '</div>' + speakBtn(q.question) + '</div>' +
             '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
             (q.answers || []).map(function (a, i) {
               return '<button class="game-option-btn" data-i="' + i + '"><span class="game-option-letter">' +
@@ -724,7 +773,8 @@ export const ExportEngine = {
             '<div style="position:absolute;right:12px;top:0;bottom:0;width:14px;background:repeating-linear-gradient(45deg,#000,#000 6px,#fff 6px,#fff 12px);"></div>' +
             '<div style="position:absolute;left:' + Math.min(88, prog) + '%;top:50%;transform:translateY(-50%);font-size:32px;transition:left .6s;">🏎️</div></div>' +
             '<div style="background:var(--theme-surface);border:2px solid var(--theme-border);border-radius:12px;padding:20px;text-align:center;width:100%;">' +
-            '<div class="game-q-text" style="font-size:19px;">' + esc(q.question) + '</div>' +
+            qImg(q, 140) + gvBadge(q) +
+            '<div style="display:flex;gap:8px;align-items:flex-start;"><div class="game-q-text" style="font-size:19px;flex:1;">' + esc(q.question) + '</div>' + speakBtn(q.question) + '</div>' +
             '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
             (q.answers || []).map(function (a, i) {
               return '<button class="game-option-btn" data-i="' + i + '"><span class="game-option-letter">' +
@@ -743,6 +793,22 @@ export const ExportEngine = {
 
       function boot() {
         document.onkeydown = null;
+        // Ủy quyền 1 nơi: mọi nút [data-speak] trong game đều đọc to
+        root.addEventListener('click', function (e) {
+          var b = e.target && e.target.closest ? e.target.closest('[data-speak]') : null;
+          if (b) { e.stopPropagation(); speak(b.getAttribute('data-speak')); }
+        });
+        // Nút toàn màn hình nổi (máy chiếu lớp học) + phím F — nằm ngoài root nên không bị xóa khi chuyển câu
+        var fs = document.createElement('button');
+        fs.innerHTML = '⛶ Toàn màn hình'; fs.title = 'Toàn màn hình (phím F)';
+        fs.style.cssText = 'position:fixed;bottom:12px;right:12px;z-index:9999;opacity:.7;padding:8px 14px;font-size:13px;font-weight:600;border-radius:8px;border:1px solid #ccc;background:#fff;cursor:pointer;';
+        fs.onmouseover = function () { fs.style.opacity = '1'; };
+        fs.onmouseout = function () { fs.style.opacity = '.7'; };
+        fs.onclick = function (e) { e.stopPropagation(); toggleFS(); };
+        document.body.appendChild(fs);
+        document.addEventListener('keydown', function (e) {
+          if ((e.key === 'f' || e.key === 'F') && !/INPUT|TEXTAREA/.test((e.target && e.target.tagName) || '')) toggleFS();
+        });
         if (GAME_TYPE === 'timer') { startScreen(runTimer, 'Khong can bo cau hoi'); return; }
         if (GAME_TYPE === 'wheel') { startScreen(runWheel, 'Quay goi ten / quay cau hoi'); return; }
         if (GAME_TYPE === 'flashcard') { startScreen(runFlashcard); return; }

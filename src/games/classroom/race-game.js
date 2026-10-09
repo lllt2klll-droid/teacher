@@ -4,6 +4,8 @@
 
 import { BaseGame } from '../base-game.js';
 import { Sound } from '../audio-synth.js';
+import { bindSpeakButtons } from '../../core/speech.js';
+import { questionImageHtml, teacherBadgeHtml } from '../question-media.js';
 
 export class RaceGame extends BaseGame {
   start() {
@@ -47,7 +49,12 @@ export class RaceGame extends BaseGame {
         <!-- Question Section -->
         <div style="background: var(--theme-surface); border: 2px solid var(--theme-border); border-radius: 12px; padding: 20px; text-align: center;">
           <div style="font-size: 14px; color: var(--theme-text-subtle); margin-bottom: 6px;">Trả lời đúng để xe tăng tốc về đích:</div>
-          <div style="font-size: 18px; font-weight: 600; margin-bottom: 20px;">${q.question}</div>
+          ${questionImageHtml(q, 140)}
+          ${teacherBadgeHtml(q, this.options.teacherMode)}
+          <div style="display: flex; align-items: flex-start; justify-content: center; gap: 8px; margin-bottom: 20px;">
+            <div style="font-size: 18px; font-weight: 600; flex: 1;">${q.question}</div>
+            ${this.options.readAloud !== false ? `<button class="btn btn-secondary btn-sm btn-speak" data-speak="${q.question.replace(/"/g, '&quot;')}" title="Đọc to câu hỏi">🔊</button>` : ''}
+          </div>
 
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
             ${(q.answers || []).map((ans, idx) => `
@@ -67,6 +74,7 @@ export class RaceGame extends BaseGame {
     `;
 
     const optBtns = this.viewportEl.querySelectorAll('.race-opt-btn');
+    bindSpeakButtons(this.viewportEl);
     optBtns.forEach(btn => {
       btn.onclick = () => {
         const choice = parseInt(btn.getAttribute('data-index'), 10);

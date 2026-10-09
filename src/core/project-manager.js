@@ -64,7 +64,9 @@ export const ProjectManager = {
         timerSeconds: 30,
         shuffleQuestions: false,
         showExplanation: true,
-        soundEnabled: true
+        soundEnabled: true,
+        readAloud: true,
+        teacherMode: false
       },
       viewport: {
         mode: '16:9'

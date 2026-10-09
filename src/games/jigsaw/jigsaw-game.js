@@ -4,6 +4,8 @@
 
 import { BaseGame } from '../base-game.js';
 import { Sound } from '../audio-synth.js';
+import { bindSpeakButtons } from '../../core/speech.js';
+import { questionImageHtml, teacherBadgeHtml, escHtml } from '../question-media.js';
 
 export class JigsawGame extends BaseGame {
   start() {
@@ -64,7 +66,12 @@ export class JigsawGame extends BaseGame {
         <!-- Question side -->
         <div style="flex: 1; background: var(--theme-surface); padding: 20px; border-radius: 12px; border: 1px solid var(--theme-border);">
           <div style="font-size: 14px; color: var(--theme-text-subtle); margin-bottom: 6px;">Câu hỏi để mở mảnh ghép tiếp theo:</div>
-          <div style="font-size: 18px; font-weight: 600; margin-bottom: 16px;">${q.question}</div>
+          ${questionImageHtml(q, 140)}
+          ${teacherBadgeHtml(q, this.options.teacherMode)}
+          <div style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 16px;">
+            <div style="font-size: 18px; font-weight: 600; flex: 1;">${escHtml(q.question)}</div>
+            ${this.options.readAloud !== false ? `<button class="btn btn-secondary btn-sm btn-speak" data-speak="${escHtml(q.question)}" title="Đọc to câu hỏi">🔊</button>` : ''}
+          </div>
 
           <div class="flex flex-col gap-2">
             ${(q.answers || []).map((ans, idx) => `
@@ -84,6 +91,7 @@ export class JigsawGame extends BaseGame {
     `;
 
     const optBtns = this.viewportEl.querySelectorAll('.jigsaw-opt-btn');
+    bindSpeakButtons(this.viewportEl);
     optBtns.forEach(btn => {
       btn.onclick = () => {
         const choice = parseInt(btn.getAttribute('data-index'), 10);

@@ -12,6 +12,7 @@ export const ContentEngine = {
     answers = ['', '', '', ''],
     correctAnswer = 0,
     explanation = '',
+    image = '',
     points = 10,
     timeLimit = 30,
     metadata = {}
@@ -22,23 +23,40 @@ export const ContentEngine = {
       question: question.trim(),
       answers: Array.isArray(answers) ? answers.map(a => String(a).trim()) : [],
       correctAnswer: typeof correctAnswer === 'number' ? correctAnswer : 0,
-      explanation: explanation.trim(),
+      explanation: (explanation || '').trim(),
+      image: image || '',
       points: Number(points) || 10,
       timeLimit: Number(timeLimit) || 30,
       metadata
     };
   },
 
-  // Bulk parser for convenient teacher input
+  // Tách 1 dòng thành các ô: ưu tiên TAB (paste bảng Word/Excel), rồi mới tới |
+  splitCells(line) {
+    if (line.includes('\t')) return line.split('\t').map(p => p.trim()).filter((p, i, arr) => p !== '' || i === 0);
+    if (line.includes('|')) return line.split('|').map(p => p.trim());
+    return [line.trim()];
+  },
+
+  // Bulk parser: pipe | tab | 1 cột (danh sách lớp cho Vòng quay)
   parseBulkText(rawText) {
     if (!rawText || !rawText.trim()) return [];
     const lines = rawText.split('\n').map(l => l.trim()).filter(Boolean);
     const questions = [];
 
     lines.forEach((line, index) => {
-      // Format 1: Pip-separated: "Câu hỏi | A | B | C | D | A/B/C/D hoặc số thứ tự"
-      if (line.includes('|')) {
-        const parts = line.split('|').map(p => p.trim());
+      const hasSep = line.includes('|') || line.includes('\t');
+      // Format 0: 1 cột duy nhất -> mục đơn (tên HS cho Vòng quay, từ vựng Flashcard)
+      if (!hasSep) {
+        const text = line.replace(/^câu\s*\d+\s*[:.-]\s*/i, '').replace(/^\d+\s*[).-]\s*/, '').trim();
+        if (text) {
+          questions.push(this.createQuestion({ question: text, answers: ['Đúng', 'Sai'], correctAnswer: 0 }));
+        }
+        return;
+      }
+      // Format 1: Pip/Tab-separated: "Câu hỏi | A | B | C | D | A/B/C/D hoặc số thứ tự"
+      {
+        const parts = this.splitCells(line);
         if (parts.length >= 3) {
           let questionText = parts[0];
           let answerOptions = [];
@@ -154,5 +172,45 @@ export const ContentEngine = {
     }
 
     return result;
+  },
+
+  // Danh sách lớp / từ vựng 1 cột -> mảng câu hỏi đơn (cho Vòng quay, Flashcard)
+  parseClassList(rawText) {
+    if (!rawText || !rawText.trim()) return [];
+    return rawText.split('\n').map(l => l.trim()).filter(Boolean)
+      .map(name => this.createQuestion({ question: name.replace(/^\d+\s*[).-]\s*/, ''), answers: ['Đúng', 'Sai'], correctAnswer: 0 }))
+      .filter(q => q.question);
+  },
+
+  // Ước tính dung lượng ảnh base64 trong bộ câu hỏi (byte)
+  estimateMediaSize(content) {
+    let bytes = 0;
+    (content?.questions || []).forEach(q => {
+      if (q.image && q.image.startsWith('data:')) bytes += Math.round(q.image.length * 0.75);
+    });
+    return bytes;
+  },
+
+  // Nén ảnh upload về JPEG/PNG dataURL gọn nhẹ để giữ Single-HTML offline
+  compressImageFile(file, maxDim = 800, quality = 0.72) {
+    return new Promise((resolve, reject) => {
+      if (!file || !file.type.startsWith('image/')) { reject(new Error('not-image')); return; }
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        try {
+          let { width: w, height: h } = img;
+          const scale = Math.min(1, maxDim / Math.max(w, h));
+          w = Math.max(1, Math.round(w * scale)); h = Math.max(1, Math.round(h * scale));
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          URL.revokeObjectURL(url);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        } catch (e) { URL.revokeObjectURL(url); reject(e); }
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('load-failed')); };
+      img.src = url;
+    });
   }
 };

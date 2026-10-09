@@ -84,6 +84,30 @@ export const GameSettingsPanel = {
               <span class="switch-slider"></span>
             </label>
           </div>
+
+          <!-- Read aloud -->
+          <div class="flex items-center justify-between" style="margin-bottom: 12px;">
+            <div>
+              <div class="font-medium" style="font-size: 13px;">🔊 Nút đọc to câu hỏi</div>
+              <div class="text-xs text-secondary">Giọng Việt, giúp HS lớp 1-2 chưa đọc thạo</div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="chk-readaloud" ${settings.readAloud !== false ? 'checked' : ''}>
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+
+          <!-- Teacher mode -->
+          <div class="flex items-center justify-between" style="margin-bottom: 12px;">
+            <div>
+              <div class="font-medium" style="font-size: 13px;">👩‍🏫 Chế độ giáo viên</div>
+              <div class="text-xs text-secondary">Hiện đáp án + giải thích ngay trong game & file xuất</div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="chk-teachermode" ${settings.teacherMode ? 'checked' : ''}>
+              <span class="switch-slider"></span>
+            </label>
+          </div>
         </div>
 
         <!-- Viewport Mode -->
@@ -140,6 +164,22 @@ export const GameSettingsPanel = {
     if (chkExplanation) {
       chkExplanation.onchange = (e) => {
         p.settings.showExplanation = e.target.checked;
+        onProjectChange(p);
+      };
+    }
+
+    const chkReadAloud = container.querySelector('#chk-readaloud');
+    if (chkReadAloud) {
+      chkReadAloud.onchange = (e) => {
+        p.settings.readAloud = e.target.checked;
+        onProjectChange(p);
+      };
+    }
+
+    const chkTeacherMode = container.querySelector('#chk-teachermode');
+    if (chkTeacherMode) {
+      chkTeacherMode.onchange = (e) => {
+        p.settings.teacherMode = e.target.checked;
         onProjectChange(p);
       };
     }

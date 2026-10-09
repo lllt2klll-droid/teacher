@@ -121,6 +121,34 @@ assert(!xssHtml.includes('</script><script>alert'), 'JSON được escape < thà
 assert(ExportEngine.getEmbedCode('https://demo.netlify.app/g.html').includes('<iframe'), 'Có hàm sinh mã iframe nhúng Canva/website');
 assert(ExportEngine.buildQrUrl('https://demo.netlify.app/g.html').includes('qr'), 'Có hàm sinh link QR cho học sinh quét');
 
+// 8. Ảnh minh họa, parse Word/Excel, danh sách lớp, mẫu SGK, chế độ GV
+console.log('\n8. Kiểm tra Ảnh / Word-Excel / Mẫu SGK / Chế độ GV:');
+const qImg = ContentEngine.createQuestion({ question: 'Test?' });
+assert(qImg.image === '', 'Câu hỏi mới mặc định chưa có ảnh (image = "")');
+const tabParsed = ContentEngine.parseBulkText('Thu do? \t Ha Noi \t Hue \t Da Nang \t Can Tho \t A');
+assert(tabParsed.length === 1 && tabParsed[0].correctAnswer === 0, 'Paste bảng Word/Excel (TAB) được nhận diện đúng đáp án A');
+const singleParsed = ContentEngine.parseBulkText('Nguyen Van An\nTran Thi Binh\n');
+assert(singleParsed.length === 2, `Dòng đơn (tên HS) được nhận diện (${singleParsed.length}/2)`);
+const classList = ContentEngine.parseClassList('1. Nguyen Van An\n2) Tran Thi Binh\n\nLe Hoang Cuc');
+assert(classList.length === 3 && classList[0].question === 'Nguyen Van An', 'Danh sách lớp tách số thứ tự và dòng trống');
+const mediaBytes = ContentEngine.estimateMediaSize({ questions: [{ image: 'data:image/jpeg;base64,' + 'A'.repeat(4000) }] });
+assert(mediaBytes > 2000, 'Ước tính dung lượng ảnh base64 hợp lý');
+assert(TEMPLATES.length >= 11, `Có ít nhất 11 mẫu SGK (hiện có: ${TEMPLATES.length})`);
+assert(TEMPLATES.some(t => t.gameType === 'tug-of-war' && t.name.includes('Toán 5')), 'Có mẫu Kéo co Toán 5');
+const mediaHtml = ExportEngine.generateStandaloneHtml(
+  { name: 'Media', gameType: 'quiz', themeId: 'nature', settings: { teacherMode: true } },
+  { questions: [{ question: 'Con gi?', answers: ['Ga', 'Cho'], correctAnswer: 0, image: 'data:image/jpeg;base64,AAA' }] },
+  'standalone'
+);
+assert(mediaHtml.includes('q-img'), 'File xuất render ảnh minh họa câu hỏi');
+assert(mediaHtml.includes('data-speak'), 'File xuất có nút Đọc to (data-speak)');
+assert(mediaHtml.includes('toggleFS'), 'File xuất có nút/phím Toàn màn hình');
+assert(mediaHtml.includes('chedo=gv'), 'File xuất hỗ trợ ?chedo=gv cho chế độ giáo viên');
+assert(mediaHtml.includes('gv-badge') || mediaHtml.includes('Đáp án GV'), 'File xuất có huy hiệu đáp án GV khi bật teacherMode');
+const bigImgContent = { questions: [{ question: 'Q?', answers: ['A', 'B'], correctAnswer: 0, image: 'data:image/jpeg;base64,' + 'A'.repeat(2200000) }] };
+const bigVal = ValidationEngine.validateProjectForExport({ name: 'Nang', gameType: 'quiz' }, bigImgContent);
+assert(bigVal.checks.some(c => c.status === 'warning'), 'Cảnh báo khi ảnh quá nặng (>1.5MB)');
+
 console.log(`\n========================================`);
 console.log(`KẾT QUẢ: Đã vượt qua ${passed} kiểm thử, Thất bại: ${failed}`);
 if (failed > 0) process.exit(1);

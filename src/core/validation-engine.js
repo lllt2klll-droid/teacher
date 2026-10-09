@@ -39,6 +39,19 @@ export const ValidationEngine = {
     // 4. Theme check
     checks.push({ status: 'ok', message: `Chủ đề được áp dụng: ${project.themeId || 'minimal'}` });
 
+    // 4b. Media size check (ảnh minh họa base64)
+    let mediaBytes = 0;
+    questions.forEach((q) => {
+      if (q.image && typeof q.image === 'string' && q.image.startsWith('data:')) {
+        mediaBytes += Math.round(q.image.length * 0.75);
+      }
+    });
+    if (mediaBytes > 1536 * 1024) {
+      checks.push({ status: 'warning', message: `Ảnh minh họa nặng ~${Math.round(mediaBytes / 1024)} KB — file xuất sẽ mở chậm, nên xóa bớt hoặc đổi ảnh nhẹ hơn.` });
+    } else if (mediaBytes > 0) {
+      checks.push({ status: 'ok', message: `Ảnh minh họa: ~${Math.round(mediaBytes / 1024)} KB (vẫn nhẹ, mở nhanh)` });
+    }
+
     // 5. External dependencies check
     checks.push({ status: 'ok', message: 'Không phát hiện liên kết mạng ngoài. File hoàn toàn độc lập 100%.' });
 

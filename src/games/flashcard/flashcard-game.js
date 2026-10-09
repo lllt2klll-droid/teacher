@@ -4,12 +4,15 @@
 
 import { BaseGame } from '../base-game.js';
 import { Sound } from '../audio-synth.js';
+import { bindSpeakButtons } from '../../core/speech.js';
+import { escHtml } from '../question-media.js';
 
 export class FlashcardGame extends BaseGame {
   start() {
     this.cards = (this.content?.questions || []).map(q => ({
       front: q.front || q.question,
-      back: q.back || (q.answers && q.answers[q.correctAnswer]) || q.explanation || 'Đáp án'
+      back: q.back || (q.answers && q.answers[q.correctAnswer]) || q.explanation || 'Đáp án',
+      image: q.image || ''
     }));
     this.currentCardIndex = 0;
     this.isFlipped = false;
@@ -40,26 +43,28 @@ export class FlashcardGame extends BaseGame {
           <div id="flashcard-inner" style="position: relative; width: 100%; height: 100%; text-align: center; transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1); transform-style: preserve-3d; box-shadow: var(--shadow-md); border-radius: 16px; border: 2px solid var(--theme-border);">
             
             <!-- Front -->
-            <div style="position: absolute; width: 100%; height: 100%; -webkit-backface-visibility: hidden; backface-visibility: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; background-color: var(--theme-surface); border-radius: 16px;">
+            <div style="position: absolute; width: 100%; height: 100%; -webkit-backface-visibility: hidden; backface-visibility: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; background-color: var(--theme-surface); border-radius: 16px; overflow-y: auto;">
               <span class="badge badge-primary" style="margin-bottom: 12px;">Mặt trước: Thuật ngữ / Câu hỏi</span>
-              <div style="font-size: 20px; font-weight: 600; color: var(--theme-text);">${card.front}</div>
+              ${card.image ? `<img src="${card.image}" alt="Minh họa" style="max-width: 100%; max-height: 110px; border-radius: 8px; margin-bottom: 8px; object-fit: contain; background: #fff;">` : ''}
+              <div style="font-size: 20px; font-weight: 600; color: var(--theme-text);">${escHtml(card.front)}</div>
               <span style="margin-top: 16px; font-size: 12px; color: var(--theme-text-subtle);">👆 Nhấp để lật thẻ</span>
             </div>
 
             <!-- Back -->
             <div style="position: absolute; width: 100%; height: 100%; -webkit-backface-visibility: hidden; backface-visibility: hidden; transform: rotateY(180deg); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; background-color: rgba(63, 95, 85, 0.08); border-radius: 16px;">
               <span class="badge badge-success" style="margin-bottom: 12px;">Mặt sau: Đáp án / Giải thích</span>
-              <div style="font-size: 20px; font-weight: 600; color: var(--theme-primary);">${card.back}</div>
+              <div style="font-size: 20px; font-weight: 600; color: var(--theme-primary);">${escHtml(card.back)}</div>
               <span style="margin-top: 16px; font-size: 12px; color: var(--theme-text-subtle);">👆 Nhấp để lật lại</span>
             </div>
 
           </div>
         </div>
 
-        <div style="display: flex; gap: 12px; justify-content: center; margin-top: 24px;">
+        <div style="display: flex; gap: 12px; justify-content: center; margin-top: 24px; flex-wrap: wrap;">
           <button class="btn btn-secondary" id="btn-prev-card" ${this.currentCardIndex === 0 ? 'disabled' : ''}>← Trước</button>
           <button class="btn btn-primary" id="btn-flip-card">🔄 Lật thẻ</button>
           <button class="btn btn-secondary" id="btn-next-card">Sau →</button>
+          ${this.options.readAloud !== false ? `<button class="btn btn-secondary btn-sm btn-speak" data-speak="${escHtml(card.front + '. ' + card.back)}" title="Đọc to thẻ này">🔊 Đọc</button>` : ''}
         </div>
       </div>
 
@@ -83,6 +88,7 @@ export class FlashcardGame extends BaseGame {
 
     container.onclick = toggleFlip;
     flipBtn.onclick = toggleFlip;
+    bindSpeakButtons(this.viewportEl);
 
     prevBtn.onclick = () => {
       if (this.currentCardIndex > 0) {
