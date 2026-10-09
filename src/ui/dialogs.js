@@ -191,8 +191,9 @@ export const Dialogs = {
     return modal;
   },
 
-  showDiagnosticsModal(validationResult, onConfirmExport) {
+  showDiagnosticsModal(validationResult, onConfirmExport, project = {}) {
     const { isValid, checks } = validationResult;
+    const gameName = project.gameType || 'quiz';
     const contentHtml = `
       <div style="font-size: 14px; margin-bottom: 16px; color: var(--color-text-secondary);">
         Hệ thống tự động kiểm tra tính toàn vẹn của dữ liệu và đảm bảo file HTML độc lập có thể hoạt động hoàn hảo:
@@ -205,9 +206,30 @@ export const Dialogs = {
           </div>
         `).join('')}
       </div>
+      <div style="margin-bottom: 16px; border: 1px solid var(--color-border); border-radius: 10px; padding: 14px 16px;">
+        <div class="font-semibold" style="font-size: 14px; margin-bottom: 4px;">Chọn kiểu file xuất (game: ${gameName})</div>
+        <div style="font-size: 12px; color: var(--color-text-secondary); margin-bottom: 12px;">
+          Cả 2 kiểu đều xuất đúng hình thức trò chơi đã chọn. Khác nhau ở cách trình bày để hợp với nơi trình chiếu.
+        </div>
+        <label style="display: flex; gap: 10px; align-items: flex-start; padding: 10px; border: 2px solid var(--color-primary); border-radius: 8px; margin-bottom: 8px; cursor: pointer;">
+          <input type="radio" name="export-profile" value="standalone" checked style="margin-top: 4px;">
+          <span>
+            <strong style="font-size: 14px;">💻 Trình chiếu Offline (khuyên dùng trên lớp)</strong><br>
+            <span style="font-size: 12px; color: var(--color-text-secondary);">Khung 16:9 nền đen, mở bằng Chrome/Cốc Cốc, copy USB, không cần mạng.</span>
+          </span>
+        </label>
+        <label style="display: flex; gap: 10px; align-items: flex-start; padding: 10px; border: 1px solid var(--color-border); border-radius: 8px; cursor: pointer;">
+          <input type="radio" name="export-profile" value="canva" style="margin-top: 4px;">
+          <span>
+            <strong style="font-size: 14px;">🖼️ Nhúng vào Canva / Website</strong><br>
+            <span style="font-size: 12px; color: var(--color-text-secondary);">Nền trong suốt, full chiều rộng iframe, chữ to, tự co giãn. Cần đăng file lên link https công khai rồi dán vào Canva → Embeds.</span>
+          </span>
+        </label>
+      </div>
       <div class="card" style="padding: 12px 16px; background: var(--color-surface-subtle);">
         <div style="font-size: 13px; color: var(--color-text-secondary);">
-          💡 <strong>Gợi ý:</strong> File HTML đã xuất có thể mở trực tiếp bằng trình duyệt (Chrome, Cốc Cốc, Edge), copy vào USB để trình chiếu trên máy chiếu lớp học mà không cần kết nối mạng.
+          💡 <strong>Lưu ý Canva:</strong> Canva không cho tải file .html lên trực tiếp. Sau khi tải file ở đây,
+          cô đăng file lên Netlify Drop / itch.io / GitHub Pages để lấy link https, rồi vào Canva → Embeds → dán link.
         </div>
       </div>
     `;
@@ -222,18 +244,93 @@ export const Dialogs = {
     const modal = this.createModal({
       title: 'Kiểm tra chẩn đoán trước khi xuất file',
       contentHtml,
-      footerHtml
+      footerHtml,
+      maxWidth: '620px'
     });
 
     modal.content.querySelector('.btn-cancel').onclick = () => modal.close();
     const exportBtn = modal.content.querySelector('.btn-export');
     if (exportBtn) {
       exportBtn.onclick = () => {
+        const checked = modal.content.querySelector('input[name="export-profile"]:checked');
+        const profile = checked ? checked.value : 'standalone';
         modal.close();
-        if (onConfirmExport) onConfirmExport();
+        if (onConfirmExport) onConfirmExport(profile);
       };
     }
 
+    return modal;
+  },
+
+  showExportSuccessModal({ filename, profile, gameType }) {
+    const isCanva = profile === 'canva';
+    const contentHtml = `
+      <div style="font-size: 14px; margin-bottom: 12px;">
+        ✅ Đã tải <strong>"${filename}"</strong> (${gameType}, kiểu ${isCanva ? 'Canva Embed' : 'Offline 16:9'}).
+      </div>
+      ${isCanva ? `
+      <div style="border: 1px solid var(--color-border); border-radius: 10px; padding: 14px 16px; margin-bottom: 12px;">
+        <div class="font-semibold" style="font-size: 14px; margin-bottom: 8px;">3 bước đưa game vào Canva (bắt buộc qua link https):</div>
+        <ol style="font-size: 13px; line-height: 1.7; padding-left: 20px; margin: 0;">
+          <li>Mở <strong>Netlify Drop</strong> (app.netlify.com/drop) hoặc <strong>itch.io</strong> → kéo file <strong>${filename}</strong> vào → nhận link https công khai.</li>
+          <li>Trong Canva: <strong>… Thêm → &lt;&gt; Embeds → dán link</strong> → game hiện trực tiếp trong thiết kế.</li>
+          <li>Tạo QR cho link để học sinh quét bằng máy tính bảng (dùng trang qr-code-generator hoặc api.qrserver.com).</li>
+        </ol>
+        <div class="form-group" style="margin-top: 12px;">
+          <label class="form-label">Dán link https của game vào đây để lấy mã nhúng & QR:</label>
+          <div style="display: flex; gap: 8px;">
+            <input type="url" class="input" id="inp-public-url" placeholder="https://ten-game.netlify.app/..." style="flex: 1;">
+            <button class="btn btn-secondary btn-sm" id="btn-make-embed">Tạo mã</button>
+          </div>
+        </div>
+        <div id="embed-result" style="display: none; margin-top: 12px;">
+          <label class="form-label">Mã iframe (dán vào website / LMS):</label>
+          <pre id="embed-code" style="padding: 10px; background: var(--color-surface-subtle); border-radius: 8px; font-size: 11px; overflow-x: auto; white-space: pre-wrap; word-break: break-all;"></pre>
+          <div style="display: flex; gap: 8px; margin-top: 8px; align-items: center; flex-wrap: wrap;">
+            <button class="btn btn-secondary btn-sm" id="btn-copy-embed">📋 Sao chép mã</button>
+            <a class="btn btn-secondary btn-sm" id="link-qr" target="_blank" rel="noopener">🔳 Mở QR code</a>
+          </div>
+        </div>
+      </div>
+      ` : `
+      <div style="font-size: 13px; color: var(--color-text-secondary); border: 1px solid var(--color-border); border-radius: 10px; padding: 12px 16px;">
+        💻 Mở file bằng Chrome / Cốc Cốc / Edge, nhấn F11 để full màn hình máy chiếu. Copy vào USB là dạy được, không cần mạng.
+        Muốn nhúng vào Canva thì xuất lại và chọn kiểu <strong>🖼️ Nhúng vào Canva</strong>.
+      </div>
+      `}
+    `;
+    const footerHtml = `<button class="btn btn-primary btn-cancel">Xong</button>`;
+    const modal = this.createModal({ title: 'Xuất file thành công', contentHtml, footerHtml, maxWidth: '620px' });
+    modal.content.querySelector('.btn-cancel').onclick = () => modal.close();
+
+    const urlInp = modal.content.querySelector('#inp-public-url');
+    const mkBtn = modal.content.querySelector('#btn-make-embed');
+    if (mkBtn && urlInp) {
+      mkBtn.onclick = () => {
+        const url = (urlInp.value || '').trim();
+        if (!url.startsWith('https://')) {
+          urlInp.style.borderColor = '#B45454';
+          urlInp.focus();
+          return;
+        }
+        const code = `<iframe src="${url}" width="1280" height="720" frameborder="0" allowfullscreen allow="autoplay; fullscreen"></iframe>`;
+        const box = modal.content.querySelector('#embed-result');
+        const pre = modal.content.querySelector('#embed-code');
+        const qr = modal.content.querySelector('#link-qr');
+        if (box && pre) { box.style.display = 'block'; pre.textContent = code; }
+        if (qr) qr.href = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' + encodeURIComponent(url);
+        const cp = modal.content.querySelector('#btn-copy-embed');
+        if (cp) cp.onclick = async () => {
+          try { await navigator.clipboard.writeText(code); cp.textContent = '✓ Đã sao chép!'; }
+          catch (e) {
+            const ta = document.createElement('textarea');
+            ta.value = code; document.body.appendChild(ta); ta.select();
+            document.execCommand('copy'); document.body.removeChild(ta);
+            cp.textContent = '✓ Đã sao chép!';
+          }
+        };
+      };
+    }
     return modal;
   }
 };

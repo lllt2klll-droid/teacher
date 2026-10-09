@@ -243,10 +243,15 @@ export const EditorView = {
     if (exportBtn) {
       exportBtn.onclick = () => {
         const validation = ValidationEngine.validateProjectForExport(project, content);
-        Dialogs.showDiagnosticsModal(validation, () => {
-          ExportEngine.downloadStandaloneHtml(project, content);
-          Notifications.success(`Đã xuất file HTML "${project.name}" thành công!`);
-        });
+        Dialogs.showDiagnosticsModal(validation, (profile) => {
+          const result = ExportEngine.downloadStandaloneHtml(project, content, profile || 'standalone');
+          Notifications.success(`Đã xuất file HTML "${result.filename}" thành công!`);
+          Dialogs.showExportSuccessModal({
+            filename: result.filename,
+            profile: result.profile,
+            gameType: project.gameType
+          });
+        }, project);
       };
     }
 
