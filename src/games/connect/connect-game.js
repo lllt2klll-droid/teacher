@@ -17,6 +17,49 @@ function shuffleArr(a) {
 }
 
 export class ConnectGame extends BaseGame {
+  colorFor(id) {
+    const palette = ['#2563EB', '#DC2626', '#059669', '#D97706', '#7C3AED', '#0284C7'];
+    return palette[Number(id) % palette.length];
+  }
+
+  paintWires() {
+    try {
+      const board = this.viewportEl.querySelector('#connect-board');
+      const svg = this.viewportEl.querySelector('#connect-svg');
+      if (!board || !svg) return;
+      const br = board.getBoundingClientRect();
+      svg.setAttribute('viewBox', `0 0 ${Math.max(1, br.width)} ${Math.max(1, br.height)}`);
+      let html = '';
+      this.connected.forEach((id) => {
+        const l = board.querySelector(`.connect-left[data-id="${id}"]`);
+        const r = board.querySelector(`.connect-right[data-id="${id}"]`);
+        if (!l || !r) return;
+        const lr = l.getBoundingClientRect();
+        const rr = r.getBoundingClientRect();
+        const x1 = lr.right - br.left;
+        const y1 = lr.top + lr.height / 2 - br.top;
+        const x2 = rr.left - br.left;
+        const y2 = rr.top + rr.height / 2 - br.top;
+        const mx = (x1 + x2) / 2;
+        const c = this.colorFor(id);
+        html += `<path d="M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}" fill="none" stroke="${c}" stroke-width="3.5" stroke-linecap="round" opacity="0.9"/>`;
+        html += `<circle cx="${x1}" cy="${y1}" r="4.5" fill="${c}"/><circle cx="${x2}" cy="${y2}" r="4.5" fill="${c}"/>`;
+      });
+      // Dây xem trước đang nối dở: từ nút trái đã chọn ra giữa
+      if (this.selectedLeft !== null && !this.connected.has(this.selectedLeft)) {
+        const l = board.querySelector(`.connect-left[data-id="${this.selectedLeft}"]`);
+        if (l) {
+          const lr = l.getBoundingClientRect();
+          const x1 = lr.right - br.left;
+          const y1 = lr.top + lr.height / 2 - br.top;
+          const c = this.colorFor(this.selectedLeft);
+          html += `<line x1="${x1}" y1="${y1}" x2="${x1 + 44}" y2="${y1}" stroke="${c}" stroke-width="3" stroke-dasharray="7 5" stroke-linecap="round" opacity="0.8"/>`;
+        }
+      }
+      svg.innerHTML = html;
+    } catch (e) {}
+  }
+
   start() {
     // Doc cap noi tu content GV (pairs hoac cau hoi -> dap an dung), giong ban xuat.
     const derived = pairsFromContent(this.content, 4);
@@ -61,30 +104,36 @@ export class ConnectGame extends BaseGame {
           ${this.selectedLeft === null ? 'Nhấp chọn một mục ở cột trái, rồi nhấp vào mục tương ứng ở cột phải để nối' : 'Đã chọn trái • hãy chọn mục phải tương ứng →'}
         </div>
 
-        <div class="gv-side-2" style="display: flex; justify-content: space-between; gap: 40px; position: relative;">
-          
+        <div class="gv-side-2" id="connect-board" style="display: flex; justify-content: space-between; gap: 56px; position: relative;">
+          <svg id="connect-svg" style="position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5;"></svg>
           <!-- Left items -->
-          <div class="flex flex-col gap-3" style="flex: 1;">
-            ${this.leftList.map(item => `
-              <button class="connect-node connect-left ${this.connected.has(item.id) ? 'matched' : ''}" 
+          <div class="flex flex-col gap-3" style="flex: 1; position: relative; z-index: 2;">
+            ${this.leftList.map(item => {
+              const c = this.colorFor(item.id);
+              const done = this.connected.has(item.id);
+              return `
+              <button class="connect-node connect-left ${done ? 'matched' : ''}"
                 data-id="${item.id}"
-                style="padding: 14px 18px; border: 2px solid var(--theme-border); border-radius: 10px; background: var(--theme-surface); text-align: left; cursor: pointer; transition: all 0.2s;"
-                ${this.connected.has(item.id) ? 'disabled' : ''}>
-                ● ${escHtml(item.left)}
-              </button>
-            `).join('')}
+                style="padding: 14px 18px; border: 2px solid ${done ? c : 'var(--theme-border)'}; border-radius: 10px; background: ${done ? c + '18' : 'var(--theme-surface)'}; text-align: left; cursor: pointer; transition: all 0.2s; position: relative;"
+                ${done ? 'disabled' : ''}>
+                <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${c};margin-right:8px;vertical-align:middle;"></span>${escHtml(item.left)}
+              </button>`;
+            }).join('')}
           </div>
 
           <!-- Right items -->
-          <div class="flex flex-col gap-3" style="flex: 1;">
-            ${this.rightList.map(item => `
-              <button class="connect-node connect-right ${this.connected.has(item.id) ? 'matched' : ''}" 
+          <div class="flex flex-col gap-3" style="flex: 1; position: relative; z-index: 2;">
+            ${this.rightList.map(item => {
+              const c = this.colorFor(item.id);
+              const done = this.connected.has(item.id);
+              return `
+              <button class="connect-node connect-right ${done ? 'matched' : ''}"
                 data-id="${item.id}"
-                style="padding: 14px 18px; border: 2px solid var(--theme-border); border-radius: 10px; background: var(--theme-surface); text-align: right; cursor: pointer; transition: all 0.2s;"
-                ${this.connected.has(item.id) ? 'disabled' : ''}>
-                ${escHtml(item.right)} ●
-              </button>
-            `).join('')}
+                style="padding: 14px 18px; border: 2px solid ${done ? c : 'var(--theme-border)'}; border-radius: 10px; background: ${done ? c + '18' : 'var(--theme-surface)'}; text-align: right; cursor: pointer; transition: all 0.2s; position: relative;"
+                ${done ? 'disabled' : ''}>
+                ${escHtml(item.right)}<span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${c};margin-left:8px;vertical-align:middle;"></span>
+              </button>`;
+            }).join('')}
           </div>
 
         </div>
@@ -97,6 +146,8 @@ export class ConnectGame extends BaseGame {
     `;
 
     this.bindEvents();
+    requestAnimationFrame(() => this.paintWires());
+    this.gameTimeout(() => this.paintWires(), 60);
     const resetBtn = this.viewportEl.querySelector('#btn-reset-connect');
     if (resetBtn) {
       resetBtn.onclick = () => {
@@ -119,9 +170,22 @@ export class ConnectGame extends BaseGame {
     leftNodes.forEach(node => {
       node.onclick = () => {
         Sound.playClick();
-        leftNodes.forEach(n => n.style.borderColor = 'var(--theme-border)');
-        node.style.borderColor = 'var(--theme-primary)';
-        this.selectedLeft = parseInt(node.getAttribute('data-id'), 10);
+        const id = parseInt(node.getAttribute('data-id'), 10);
+        // Bấm lại để bỏ chọn dây đang nối dở
+        if (this.selectedLeft === id) {
+          this.selectedLeft = null;
+          node.style.borderColor = 'var(--theme-border)';
+          this.paintWires();
+          const hint = this.viewportEl.querySelector('.pair-hint');
+          if (hint) hint.textContent = 'Nhấp chọn một mục ở cột trái, rồi nhấp vào mục tương ứng ở cột phải để nối';
+          return;
+        }
+        leftNodes.forEach(n => {
+          if (!n.classList.contains('matched')) n.style.borderColor = 'var(--theme-border)';
+        });
+        node.style.borderColor = this.colorFor(id);
+        this.selectedLeft = id;
+        this.paintWires();
       };
     });
 

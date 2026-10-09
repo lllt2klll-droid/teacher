@@ -121,6 +121,7 @@ export class QuizGame extends BaseGame {
         <span class="quiz-hint">Phím 1-${Math.min(this.order.length, 6)} / A-${String.fromCharCode(64 + Math.min(this.order.length, 6))} để chọn</span>
         <div class="flex items-center gap-2">
           <button class="btn btn-secondary btn-sm" id="btn-fifty" ${this.fiftyUsed ? 'disabled title="Đã dùng 50:50"' : 'title="Loại 2 đáp án sai (1 lần chơi)"'}>🎯 50:50</button>
+          <button class="btn btn-secondary btn-sm" id="btn-autoread-q" title="Tự đọc to câu mới cho cả lớp nghe">${this.options.autoRead ? '🔊 Tự đọc: Bật' : '🔇 Tự đọc: Tắt'}</button>
           <button class="btn btn-secondary btn-sm" id="btn-skip-q">Bỏ qua →</button>
         </div>
       </div>
@@ -152,6 +153,19 @@ export class QuizGame extends BaseGame {
         this.currentQuestionIndex++;
         this.renderCurrentQuestion();
       };
+    }
+
+    const autoBtn = this.viewportEl.querySelector('#btn-autoread-q');
+    if (autoBtn) {
+      autoBtn.onclick = () => {
+        this.options.autoRead = !this.options.autoRead;
+        autoBtn.textContent = this.options.autoRead ? '🔊 Tự đọc: Bật' : '🔇 Tự đọc: Tắt';
+        if (this.options.autoRead) Speech.speak(q.question);
+      };
+    }
+    // Tự đọc câu mới khi cô đã bật (chiếu lớp không cần bấm từng câu)
+    if (this.options.autoRead && this.options.readAloud !== false) {
+      this.gameTimeout(() => Speech.speak(q.question), 350);
     }
 
     // Start question timer
@@ -280,13 +294,21 @@ export class QuizGame extends BaseGame {
     const headScore = this.viewportEl.querySelector('.quiz-score strong');
     if (headScore) headScore.textContent = this.score;
 
-    // Show explanation if enabled
+    // Show explanation if enabled (kèm nút đọc giải thích cho cả lớp nghe)
     if (this.options.showExplanation && q.explanation) {
       const expBox = this.viewportEl.querySelector('#quiz-explanation-box');
       const expText = this.viewportEl.querySelector('#quiz-explanation-text');
       if (expBox && expText) {
         expText.textContent = q.explanation;
         expBox.style.display = 'block';
+        if (this.options.readAloud !== false && !expBox.querySelector('.btn-speak-exp')) {
+          const b = document.createElement('button');
+          b.className = 'btn btn-secondary btn-sm btn-speak-exp';
+          b.textContent = '🔊 Đọc giải thích';
+          b.style.marginLeft = '8px';
+          b.onclick = (e) => { e.stopPropagation(); Speech.speak(q.explanation); };
+          expBox.appendChild(b);
+        }
       }
     }
 

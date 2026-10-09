@@ -49,12 +49,15 @@ export class TugOfWarGame extends BaseGame {
       </div>
 
       <div class="game-body tug-body">
+        <div style="font-size: 26px; font-weight: 800; color: ${teamColor}; background: ${teamColor}14; border: 2px solid ${teamColor}; border-radius: 12px; padding: 8px 22px; margin-bottom: 10px; letter-spacing: 1px;">
+          👉 ${teamName} TRẢ LỜI
+        </div>
         <div class="tug-meter" title="Dây đang lệch ${this.ropePosition}/${this.goal}">
           <span class="tug-flag left">🏁 XANH</span>
           <div class="tug-track">
             <div class="tug-center"></div>
             <div class="tug-rope"></div>
-            <div id="rope-knot" class="tug-knot" style="left: calc(50% + ${Math.round(this.ropePosition * 150 / this.goal)}px);">🎀</div>
+            <div id="rope-knot" class="tug-knot" style="left: calc(50% + ${Math.round(this.ropePosition * 150 / this.goal)}px); transition: left 0.6s cubic-bezier(0.34, 1.4, 0.64, 1);">🎀</div>
           </div>
           <span class="tug-flag right">ĐỎ 🏁</span>
         </div>

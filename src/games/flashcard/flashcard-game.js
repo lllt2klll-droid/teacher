@@ -18,6 +18,7 @@ export class FlashcardGame extends BaseGame {
     this.currentCardIndex = 0;
     this.isFlipped = false;
     this.masteredSet = new Set();
+    this.autoFlip = false;
     this.startAt = Date.now();
     this.state = 'playing';
     // Phim Space lat the, mui ten chuyen the (tu don khi destroy nho BaseGame)
@@ -50,6 +51,11 @@ export class FlashcardGame extends BaseGame {
     this.isFlipped = false;
     if (this.startAt == null) this.startAt = Date.now();
     const pct = Math.round(this.masteredSet.size / Math.max(1, total) * 100);
+    // Chữ tự co khi thuật ngữ dài để không tràn thẻ trong khung Canva nhỏ
+    const frontLen = String(card.front || '').length;
+    const backLen = String(card.back || '').length;
+    const frontSize = frontLen > 120 ? 15 : frontLen > 60 ? 17 : 20;
+    const backSize = backLen > 120 ? 15 : backLen > 60 ? 17 : 20;
 
     this.viewportEl.innerHTML = `
       <div class="game-header quiz-head">
@@ -73,14 +79,14 @@ export class FlashcardGame extends BaseGame {
             <div style="position: absolute; width: 100%; height: 100%; -webkit-backface-visibility: hidden; backface-visibility: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; background-color: var(--theme-surface); border-radius: 16px; overflow-y: auto;">
               <span class="badge badge-primary" style="margin-bottom: 12px;">Mặt trước: Thuật ngữ / Câu hỏi</span>
               ${card.image ? `<img src="${escHtml(card.image)}" alt="Minh họa" style="max-width: 100%; max-height: 110px; border-radius: 8px; margin-bottom: 8px; object-fit: contain; background: #fff;">` : ''}
-              <div style="font-size: 20px; font-weight: 600; color: var(--theme-text);">${escHtml(card.front)}</div>
+              <div style="font-size: ${frontSize}px; font-weight: 600; color: var(--theme-text); line-height: 1.4;">${escHtml(card.front)}</div>
               <span style="margin-top: 16px; font-size: 12px; color: var(--theme-text-subtle);">👆 Nhấp để lật thẻ</span>
             </div>
 
             <!-- Back -->
             <div style="position: absolute; width: 100%; height: 100%; -webkit-backface-visibility: hidden; backface-visibility: hidden; transform: rotateY(180deg); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; background-color: rgba(63, 95, 85, 0.08); border-radius: 16px;">
               <span class="badge badge-success" style="margin-bottom: 12px;">Mặt sau: Đáp án / Giải thích</span>
-              <div style="font-size: 20px; font-weight: 600; color: var(--theme-primary);">${escHtml(card.back)}</div>
+              <div style="font-size: ${backSize}px; font-weight: 600; color: var(--theme-primary); line-height: 1.4;">${escHtml(card.back)}</div>
               <span style="margin-top: 16px; font-size: 12px; color: var(--theme-text-subtle);">👆 Nhấp để lật lại</span>
             </div>
 
@@ -91,6 +97,7 @@ export class FlashcardGame extends BaseGame {
           <button class="btn btn-secondary" id="btn-prev-card" ${this.currentCardIndex === 0 ? 'disabled' : ''}>← Trước</button>
           <button class="btn btn-primary" id="btn-flip-card">🔄 Lật thẻ</button>
           <button class="btn btn-secondary" id="btn-next-card">Sau →</button>
+          <button class="btn btn-secondary btn-sm" id="btn-auto-flip" title="Tự lật mỗi 5 giây để chiếu lớp">${this.autoFlip ? '⏸ Tắt tự lật' : '▶ Tự lật 5s'}</button>
           <button class="btn btn-secondary btn-sm" id="btn-shuffle-cards" title="Xáo trộn thứ tự thẻ">🎲 Xáo</button>
           ${this.options.readAloud !== false ? `<button class="btn btn-secondary btn-sm btn-speak" data-speak="${escHtml(card.front + '. ' + card.back)}" title="Đọc to thẻ này">🔊 Đọc</button>` : ''}
         </div>
@@ -122,6 +129,29 @@ export class FlashcardGame extends BaseGame {
     container.onclick = toggleFlip;
     flipBtn.onclick = toggleFlip;
     bindSpeakButtons(this.viewportEl);
+    // Tự lật mỗi 5s khi cô chiếu lớp
+    this.clearGameTimeouts();
+    const autoBtn = this.viewportEl.querySelector('#btn-auto-flip');
+    if (autoBtn) {
+      autoBtn.onclick = () => {
+        this.autoFlip = !this.autoFlip;
+        this.renderCard();
+      };
+    }
+    if (this.autoFlip) {
+      this.gameTimeout(() => {
+        try {
+          const f = this.viewportEl.querySelector('#btn-flip-card');
+          if (f) f.click();
+        } catch (e) {}
+        this.gameTimeout(() => {
+          try {
+            const n = this.viewportEl.querySelector('#btn-next-card');
+            if (n) n.click();
+          } catch (e) {}
+        }, 2500);
+      }, 2500);
+    }
 
     prevBtn.onclick = () => {
       if (this.currentCardIndex > 0) {

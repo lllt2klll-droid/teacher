@@ -85,14 +85,17 @@ export class DragDropGame extends BaseGame {
 
         <!-- Drop targets / buckets -->
         <div class="gv-grid-2">
-          ${this.categories.map(cat => `
-            <div class="drop-target-box" data-cat="${cat.id}" style="min-height: 180px; background: var(--theme-surface); border: 2px solid var(--theme-border); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; transition: border-color 0.2s;">
+          ${this.categories.map(cat => {
+            const total = this.items.filter(i => i.targetCat === cat.id).length;
+            const done = this.items.filter(i => i.targetCat === cat.id && this.placedIds.has(String(i.id))).length;
+            return `
+            <div class="drop-target-box" data-cat="${cat.id}" style="min-height: 180px; background: var(--theme-surface); border: 2px solid var(--theme-border); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; transition: border-color 0.2s, transform 0.15s, box-shadow 0.15s;">
               <div class="font-semibold" style="margin-bottom: 12px; font-size: 16px; border-bottom: 1px solid var(--theme-border); padding-bottom: 8px;">
-                ${escHtml(cat.title)}
+                ${escHtml(cat.title)} <span style="font-weight:400;font-size:13px;color:var(--theme-text-subtle);">(${done}/${total} mục)</span>
               </div>
               <div class="bucket-contents flex gap-2 flex-wrap" style="flex: 1;"></div>
-            </div>
-          `).join('')}
+            </div>`;
+          }).join('')}
         </div>
 
       </div>
@@ -143,14 +146,25 @@ export class DragDropGame extends BaseGame {
     });
 
     buckets.forEach(bucket => {
+      const highlight = () => {
+        bucket.style.borderColor = 'var(--theme-primary)';
+        bucket.style.transform = 'scale(1.02)';
+        bucket.style.boxShadow = '0 0 0 3px rgba(63,95,85,.18)';
+      };
+      const unhighlight = () => {
+        bucket.style.borderColor = 'var(--theme-border)';
+        bucket.style.transform = 'none';
+        bucket.style.boxShadow = 'none';
+      };
       bucket.ondragover = (e) => {
         e.preventDefault();
-        bucket.style.borderColor = 'var(--theme-primary)';
+        highlight();
       };
 
       bucket.ondragleave = () => {
-        bucket.style.borderColor = 'var(--theme-border)';
+        unhighlight();
       };
+      bucket.ondragend = () => unhighlight();
 
       bucket.ondrop = (e) => {
         e.preventDefault();
@@ -193,6 +207,20 @@ export class DragDropGame extends BaseGame {
       chipEl.style.background = '#4D7A5A';
       contents.appendChild(chipEl);
       bucketEl.style.borderColor = '#4D7A5A';
+      bucketEl.style.transform = 'none';
+      bucketEl.style.boxShadow = 'none';
+      // Cập nhật số mục (done/total) ngay trên tên nhóm
+      try {
+        const boxes = this.viewportEl.querySelectorAll('.drop-target-box');
+        boxes.forEach(box => {
+          const cid = box.getAttribute('data-cat');
+          const total = this.items.filter(i => i.targetCat === cid).length;
+          const done = this.items.filter(i => i.targetCat === cid && this.placedIds.has(String(i.id))).length;
+          const titleEl = box.querySelector('.font-semibold');
+          const cat = this.categories.find(c => c.id === cid);
+          if (titleEl && cat) titleEl.innerHTML = `${escHtml(cat.title)} <span style="font-weight:400;font-size:13px;color:var(--theme-text-subtle);">(${done}/${total} mục)</span>`;
+        });
+      } catch (e) {}
       this.gameTimeout(() => { try { bucketEl.style.borderColor = 'var(--theme-border)'; } catch (e) {} }, 500);
 
       if (this.placedCount >= this.items.length) {

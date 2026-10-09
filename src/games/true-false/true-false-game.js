@@ -123,6 +123,24 @@ export class TrueFalseGame extends BaseGame {
 
     btnTrue.onclick = () => this.selectAnswer(0);
     btnFalse.onclick = () => this.selectAnswer(1);
+    // Vuốt trái/phải trên máy tính bảng = chọn Sai/Đúng (HS lớp 1 thao tác nhanh)
+    try {
+      const card = this.viewportEl.querySelector('.tf-card');
+      let tx = null;
+      if (card) {
+        card.addEventListener('touchstart', (e) => {
+          tx = e.touches && e.touches[0] ? e.touches[0].clientX : null;
+        }, { passive: true });
+        card.addEventListener('touchend', (e) => {
+          if (tx == null) return;
+          const endX = e.changedTouches && e.changedTouches[0] ? e.changedTouches[0].clientX : tx;
+          const dx = endX - tx;
+          tx = null;
+          if (Math.abs(dx) < 40) return;
+          this.selectAnswer(dx > 0 ? 1 : 0);
+        }, { passive: true });
+      }
+    } catch (e) {}
     const skipBtn = this.viewportEl.querySelector('#btn-skip-tf');
     if (skipBtn) {
       skipBtn.onclick = () => {
@@ -188,18 +206,21 @@ export class TrueFalseGame extends BaseGame {
 
     let gained = 0;
     let note = '';
+    const reflexSec = Math.max(0, (Date.now() - (this.qStartAt || Date.now())) / 1000);
     if (isCorrect) {
       Sound.playCorrect();
       this.correctCount++;
       this.streak++;
       if (this.streak > this.bestStreak) this.bestStreak = this.streak;
       gained = q.points || 10;
+      // Hiện thời gian phản xạ để thi đua (VD: Phản xạ 2.3s)
+      note += `⚡ Phản xạ ${reflexSec.toFixed(1)}s • `;
       if (this.speedBonus && this.options.timerEnabled !== false && this.timeTotal > 0) {
-        const elapsed = (Date.now() - this.qStartAt) / 1000;
+        const elapsed = reflexSec;
         if (elapsed < this.timeTotal * 0.5) {
           const extra = Math.max(1, Math.round(gained * 0.3));
           gained += extra;
-          note += `⚡ Nhanh +${extra} • `;
+          note += `Nhanh +${extra} • `;
         }
       }
       if (this.streakBonus && this.streak % 3 === 0) {

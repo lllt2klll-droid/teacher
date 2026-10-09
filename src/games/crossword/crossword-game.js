@@ -44,13 +44,15 @@ export class CrosswordGame extends BaseGame {
         <div class="cw-list">
           ${this.words.map((item, idx) => `
             <div class="card" style="padding: 16px; border: 2px solid ${this.solved.has(item.id) ? '#4D7A5A' : 'var(--theme-border)'}; background: var(--theme-surface);">
-              <div class="font-semibold" style="margin-bottom: 8px;">
+              <div class="font-semibold" style="margin-bottom: 4px;">
                 Hàng ${idx + 1}: ${escHtml(item.clue)}
               </div>
-              <div class="flex items-center gap-3">
+              <div style="font-size: 15px; letter-spacing: 3px; margin-bottom: 8px; color: var(--theme-text-subtle);" title="${item.answer.length} chữ cái">${'□'.repeat(item.answer.length)} <span style="font-size:12px;letter-spacing:0;">(${item.answer.length} chữ)</span></div>
+              <div class="flex items-center gap-3" style="flex-wrap: wrap;">
                 <input type="text" class="input crossword-input" data-id="${item.id}"
                   maxlength="${item.answer.length}"
-                  placeholder="${item.answer.length} ký tự"
+                  autocomplete="off" autocapitalize="characters" spellcheck="false"
+                  placeholder="${'•'.repeat(Math.min(item.answer.length, 8))}"
                   style="text-transform: uppercase; font-weight: 700; letter-spacing: 4px; font-size: 18px; max-width: 220px;"
                   ${this.solved.has(item.id) ? `value="${escHtml(item.answer)}" disabled` : ''}>
                 <button class="btn btn-primary btn-sm check-word-btn" data-id="${item.id}" ${this.solved.has(item.id) ? 'disabled' : ''}>
@@ -70,6 +72,7 @@ export class CrosswordGame extends BaseGame {
 
       <div class="game-footer quiz-foot">
         <span class="quiz-hint">Điểm ${this.score}đ • Đã gợi ý ${this.hinted.size} từ • Enter để kiểm tra nhanh</span>
+        <button class="btn btn-primary btn-sm" id="btn-grade-all" title="Chấm hết cả bài một lần">📋 Chấm hết cả bài</button>
       </div>
     `;
 
@@ -110,7 +113,41 @@ export class CrosswordGame extends BaseGame {
     checkBtns.forEach(btn => {
       btn.onclick = () => doCheck(btn);
     });
+    const gradeAll = this.viewportEl.querySelector('#btn-grade-all');
+    if (gradeAll) {
+      gradeAll.onclick = () => {
+        Sound.playClick();
+        let ok = 0;
+        this.words.forEach((w) => {
+          if (this.solved.has(w.id)) return;
+          const inp = this.viewportEl.querySelector(`.crossword-input[data-id="${w.id}"]`);
+          if (!inp) return;
+          const val = normText(inp.value);
+          if (val === normText(w.answer) && val.length > 0) {
+            this.solved.add(w.id);
+            this.score += this.hinted.has(w.id) ? 10 : 20;
+            ok++;
+          } else {
+            inp.classList.remove('quiz-shake');
+            void inp.offsetWidth;
+            inp.classList.add('quiz-shake');
+            inp.style.borderColor = '#B45454';
+          }
+        });
+        if (ok > 0) Sound.playCorrect(); else Sound.playWrong();
+        this.renderCrossword();
+        if (this.solved.size >= this.words.length) {
+          this.gameTimeout(() => this.finish(), 800);
+        }
+      };
+    }
     this.viewportEl.querySelectorAll('.crossword-input').forEach(inp => {
+      inp.oninput = () => {
+        // Gõ thường tự đổi HOA để HS lớp 1 không bị trừ điểm oan
+        const pos = inp.selectionStart;
+        inp.value = String(inp.value || '').toUpperCase();
+        try { inp.setSelectionRange(pos, pos); } catch (e) {}
+      };
       inp.onkeydown = (e) => {
         if (e.key === 'Enter') {
           const id = inp.getAttribute('data-id');

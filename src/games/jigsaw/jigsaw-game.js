@@ -109,11 +109,62 @@ export class JigsawGame extends BaseGame {
 
       <div class="game-footer quiz-foot">
         <span class="quiz-hint">Trả lời đúng để lật mở ô tranh • Lượt thử: ${this.attempts} • Câu ${Math.min(this.currentQIndex + 1, this.totalTiles)}/${this.totalTiles}</span>
+        <div class="flex items-center gap-2">
+          <button class="btn btn-secondary btn-sm" id="btn-change-cover" title="Đổi tranh bí mật ngay tại lớp">🖼️ Đổi tranh</button>
+          <button class="btn btn-secondary btn-sm" id="btn-guess-early" title="Cho HS đoán tranh sớm để ăn thưởng">🤔 Đoán sớm +20đ</button>
+        </div>
+        <input type="file" id="inp-cover-file" accept="image/*" style="display: none;">
       </div>
     `;
 
     const optBtns = this.viewportEl.querySelectorAll('.jigsaw-opt-btn');
     bindSpeakButtons(this.viewportEl);
+    // Đổi tranh bí mật tại chỗ (cô chụp ảnh lớp / tải ảnh SGK, máy tự nén)
+    const fileInp = this.viewportEl.querySelector('#inp-cover-file');
+    const coverBtn = this.viewportEl.querySelector('#btn-change-cover');
+    if (coverBtn && fileInp) {
+      coverBtn.onclick = () => fileInp.click();
+      fileInp.onchange = () => {
+        const f = fileInp.files && fileInp.files[0];
+        if (!f) return;
+        const rd = new FileReader();
+        rd.onload = () => {
+          try {
+            const img = new Image();
+            img.onload = () => {
+              const cv = document.createElement('canvas');
+              const maxW = 800;
+              const sc = Math.min(1, maxW / img.width);
+              cv.width = Math.round(img.width * sc);
+              cv.height = Math.round(img.height * sc);
+              cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+              this.coverImage = cv.toDataURL('image/jpeg', 0.82);
+              if (this.content) this.content.coverImage = this.coverImage;
+              Sound.playCorrect();
+              this.renderBoard();
+            };
+            img.src = rd.result;
+          } catch (e) {}
+        };
+        rd.readAsDataURL(f);
+      };
+    }
+    // Đoán tranh sớm: cô xác nhận Đúng/Sai, đúng ăn thưởng +20đ và mở hết
+    const guessBtn = this.viewportEl.querySelector('#btn-guess-early');
+    if (guessBtn) {
+      guessBtn.onclick = () => {
+        if (this._locked) return;
+        const ok = window.confirm('HS đoán tranh sớm có đúng không?\nOK = Đúng (+20đ, mở hết tranh) • Cancel = Sai (chơi tiếp)');
+        if (ok) {
+          Sound.playCheer();
+          this.score += 20;
+          this.revealedTiles = new Set(Array.from({ length: this.totalTiles }).map((_, i) => i));
+          this.gameTimeout(() => this.finish(), 600);
+        } else {
+          Sound.playWrong();
+        }
+      };
+    }
     optBtns.forEach(btn => {
       btn.onclick = () => {
         if (this._locked) return;

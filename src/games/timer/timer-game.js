@@ -59,9 +59,12 @@ export class TimerGame extends BaseGame {
         </div>
 
         <!-- Controls -->
-        <div class="flex gap-3">
+        <div class="flex gap-3" style="flex-wrap: wrap; justify-content: center;">
           <button class="btn btn-primary btn-lg timer-toggle" id="btn-toggle-timer">
             ${this.isRunning ? '⏸ Tạm dừng' : '▶ Bắt đầu'}
+          </button>
+          <button class="btn btn-secondary btn-lg" id="btn-plus30" title="Cộng thêm 30 giây khi thảo luận lố giờ">
+            +30s
           </button>
           <button class="btn btn-secondary btn-lg" id="btn-reset-timer">
             🔄 Đặt lại
@@ -78,6 +81,22 @@ export class TimerGame extends BaseGame {
 
     const toggleBtn = this.viewportEl.querySelector('#btn-toggle-timer');
     const resetBtn = this.viewportEl.querySelector('#btn-reset-timer');
+    const plusBtn = this.viewportEl.querySelector('#btn-plus30');
+    if (plusBtn) {
+      plusBtn.onclick = () => {
+        Sound.playClick();
+        this.totalSeconds += 30;
+        if (this.mode === 'down') this.remainingSeconds += 30;
+        const d = this.viewportEl.querySelector('#big-timer-display');
+        if (d && this.mode === 'down') {
+          const m = Math.floor(this.remainingSeconds / 60);
+          const s = this.remainingSeconds % 60;
+          d.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+          d.style.color = 'var(--theme-primary)';
+        }
+        this.paintClock(d);
+      };
+    }
     const presetBtns = this.viewportEl.querySelectorAll('.preset-btn');
     const display = this.viewportEl.querySelector('#big-timer-display');
     const customInp = this.viewportEl.querySelector('#inp-custom-min');
@@ -191,7 +210,12 @@ export class TimerGame extends BaseGame {
           display.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
           if (this.remainingSeconds <= 10) {
             display.style.color = '#B45454';
+            // 10s cuối tick to dần + rung nhẹ để cả lớp cảm nhận
             Sound.playTick();
+            if (this.remainingSeconds <= 5) Sound.playTick();
+            display.classList.remove('quiz-urgent');
+            void display.offsetWidth;
+            display.classList.add('quiz-urgent');
           }
         }
         this.paintClock(display);

@@ -18,11 +18,15 @@ function shuffleArr(a) {
 export class MatchingGame extends BaseGame {
   start() {
     const rawQuestions = this.content?.questions || [];
-    this.pairs = rawQuestions.slice(0, 6).map((q, idx) => ({
+    this.allPairs = rawQuestions.map((q, idx) => ({
       id: idx,
       left: q.question || ('Mục ' + (idx + 1)),
       right: (q.answers && q.answers[q.correctAnswer]) || q.explanation || 'Ý nghĩa ' + (idx + 1)
     }));
+    // Lớp 1 chỉ nên 3 cặp, lớp lớn 6 cặp — cô chọn nhanh
+    const want = Math.min(6, Math.max(3, this.options.pairCount || Math.min(6, Math.max(3, this.allPairs.length || 3))));
+    this.pairCount = [3, 4, 6].includes(want) ? want : (want <= 3 ? 3 : want <= 4 ? 4 : 6);
+    this.pairs = this.allPairs.slice(0, this.pairCount);
 
     if (this.pairs.length === 0) {
       this.pairs = [
@@ -65,7 +69,10 @@ export class MatchingGame extends BaseGame {
           <div class="quiz-progress-fill" style="width: ${pct}%;"></div>
         </div>
         <div class="pair-hint">
-          Nhấp chọn một mục ở Cột A, sau đó chọn mục tương ứng ở Cột B
+          Nhấp chọn một mục ở Cột A, sau đó chọn mục tương ứng ở Cột B • Bấm lại để bỏ chọn
+        </div>
+        <div style="display: flex; gap: 8px; justify-content: center; margin-bottom: 10px;">
+          ${[3, 4, 6].map(n => `<button class="btn btn-sm pair-count-btn ${this.pairCount === n ? 'btn-primary' : 'btn-secondary'}" data-n="${n}">${n} cặp</button>`).join('')}
         </div>
 
         <div class="gv-grid-2">
@@ -106,6 +113,33 @@ export class MatchingGame extends BaseGame {
     `;
 
     this.bindEvents();
+    this.viewportEl.querySelectorAll('.pair-count-btn').forEach(b => {
+      b.onclick = () => {
+        if (this._checking) return;
+        Sound.playClick();
+        this.pairCount = parseInt(b.getAttribute('data-n'), 10);
+        this.options.pairCount = this.pairCount;
+        this.pairs = this.allPairs.slice(0, this.pairCount);
+        if (!this.pairs.length) return;
+        this.leftItems = this.pairs.slice();
+        this.rightItems = this.pairs.slice();
+        for (let i = this.leftItems.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          const t = this.leftItems[i]; this.leftItems[i] = this.leftItems[j]; this.leftItems[j] = t;
+        }
+        for (let i = this.rightItems.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          const t = this.rightItems[i]; this.rightItems[i] = this.rightItems[j]; this.rightItems[j] = t;
+        }
+        this.selectedLeft = null;
+        this.selectedRight = null;
+        this.matchedIds = new Set();
+        this.attempts = 0;
+        this.mistakes = 0;
+        this.score = 0;
+        this.renderBoard();
+      };
+    });
     const reshuffleBtn = this.viewportEl.querySelector('#btn-reshuffle-match');
     if (reshuffleBtn) {
       reshuffleBtn.onclick = () => {
@@ -127,9 +161,16 @@ export class MatchingGame extends BaseGame {
     leftBtns.forEach(btn => {
       btn.onclick = () => {
         Sound.playClick();
+        const id = parseInt(btn.getAttribute('data-id'), 10);
+        // Bấm lại mục đang chọn để bỏ chọn
+        if (this.selectedLeft === id && this.selectedRight === null) {
+          this.selectedLeft = null;
+          btn.style.borderColor = 'var(--theme-border)';
+          return;
+        }
         leftBtns.forEach(b => b.style.borderColor = 'var(--theme-border)');
         btn.style.borderColor = 'var(--theme-primary)';
-        this.selectedLeft = parseInt(btn.getAttribute('data-id'), 10);
+        this.selectedLeft = id;
         this.checkMatch();
       };
     });
@@ -137,9 +178,15 @@ export class MatchingGame extends BaseGame {
     rightBtns.forEach(btn => {
       btn.onclick = () => {
         Sound.playClick();
+        const id = parseInt(btn.getAttribute('data-id'), 10);
+        if (this.selectedRight === id && this.selectedLeft === null) {
+          this.selectedRight = null;
+          btn.style.borderColor = 'var(--theme-border)';
+          return;
+        }
         rightBtns.forEach(b => b.style.borderColor = 'var(--theme-border)');
         btn.style.borderColor = 'var(--theme-primary)';
-        this.selectedRight = parseInt(btn.getAttribute('data-id'), 10);
+        this.selectedRight = id;
         this.checkMatch();
       };
     });

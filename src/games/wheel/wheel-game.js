@@ -19,6 +19,8 @@ export class WheelGame extends BaseGame {
     this.isSpinning = false;
     this.selectedItem = null;
     this.history = [];
+    this.autoRemove = this.options.wheelAutoRemove === true;
+    this.readAloud = this.options.readAloud !== false;
     this.state = 'playing';
 
     this.renderWheelScreen();
@@ -44,8 +46,11 @@ export class WheelGame extends BaseGame {
           </button>
         </div>
 
-        <!-- Result announcement -->
-        <div id="wheel-result-banner" class="wheel-banner"></div>
+        <!-- Result announcement (phóng to cho bàn cuối nhìn thấy) -->
+        <div id="wheel-result-banner" class="wheel-banner" style="min-height: 64px; font-size: 22px;"></div>
+        <label style="display: inline-flex; gap: 8px; align-items: center; font-size: 13px; margin-top: 4px; cursor: pointer;">
+          <input type="checkbox" id="chk-auto-remove" ${this.autoRemove ? 'checked' : ''}> Tự bỏ mục vừa trúng (gọi tên không trùng)
+        </label>
 
         <div class="wheel-actions">
           <button class="btn btn-primary btn-lg" id="btn-spin-action" ${this.isSpinning || !this.optionsList.length ? 'disabled' : ''}>
@@ -86,6 +91,13 @@ export class WheelGame extends BaseGame {
     const spinAction = this.viewportEl.querySelector('#btn-spin-action');
     const removeBtn = this.viewportEl.querySelector('#btn-remove-picked');
     const resetBtn = this.viewportEl.querySelector('#btn-reset-wheel');
+    const autoChk = this.viewportEl.querySelector('#chk-auto-remove');
+    if (autoChk) {
+      autoChk.onchange = () => {
+        this.autoRemove = autoChk.checked;
+        this.options.wheelAutoRemove = autoChk.checked;
+      };
+    }
 
     const doSpin = () => {
       if (this.isSpinning || this.optionsList.length === 0) return;
@@ -272,15 +284,39 @@ export class WheelGame extends BaseGame {
     const removeBtn = this.viewportEl.querySelector('#btn-remove-picked');
     if (banner) {
       banner.textContent = '';
+      banner.style.fontSize = '30px';
       const t = document.createElement('span');
-      t.textContent = '🎉 Kết quả: ';
+      t.textContent = '🎉 ';
       const s = document.createElement('strong');
       s.textContent = this.selectedItem ?? '';
+      s.style.fontSize = '34px';
       banner.appendChild(t);
       banner.appendChild(s);
       banner.classList.remove('pop');
       void banner.offsetWidth;
       banner.classList.add('pop');
+    }
+    // Đọc to tên HS trúng cho cả lớp nghe
+    try {
+      if (this.readAloud && window.speechSynthesis && this.selectedItem) {
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance('Chúc mừng ' + String(this.selectedItem).slice(0, 60));
+        u.lang = 'vi-VN'; u.rate = 0.95;
+        window.speechSynthesis.speak(u);
+      }
+    } catch (e) {}
+    // Tự bỏ mục vừa trúng nếu cô đã bật (loại trực tiếp)
+    if (this.autoRemove && this.selectedItem) {
+      const ix = this.optionsList.indexOf(this.selectedItem);
+      if (ix >= 0) this.optionsList.splice(ix, 1);
+      const keep = this.selectedItem;
+      this.gameTimeout(() => {
+        this.selectedItem = null;
+        this.renderWheelScreen();
+        const b = this.viewportEl.querySelector('#wheel-result-banner');
+        if (b) b.innerHTML = `Vừa gọi: <strong>${keep.replace(/</g, '&lt;')}</strong> (đã tự bỏ khỏi vòng)`;
+      }, 2200);
+      return;
     }
     if (removeBtn) {
       removeBtn.style.display = 'inline-flex';

@@ -420,8 +420,18 @@ export const ExportEngine = {
             (q.explanation ? '<div id="exp" style="display:none;margin-top:12px;font-size:14px;text-align:left;border-left:4px solid var(--theme-primary);padding-left:10px;">' +
               '<strong>Giai thich:</strong> ' + esc(q.explanation) + '</div>' : '') +
             '<div id="bonus" style="min-height:20px;text-align:center;font-weight:700;font-size:14px;margin-top:8px;"></div>' +
+            '<div style="text-align:center;margin-top:8px;"><button class="btn btn-secondary btn-sm" id="qAuto">🔇 Tu doc: Tat</button></div>' +
             '</div></div>' +
             footer('Bam chuot / cham de chon - Phim 1-4');
+          // Dong bo preview: tu doc cau moi + nut doc giai thich
+          try {
+            var qa = document.getElementById('qAuto');
+            if (qa) qa.onclick = function (ev) { if (ev) ev.stopPropagation();
+              window._tsAutoRead = !window._tsAutoRead;
+              qa.textContent = window._tsAutoRead ? '🔊 Tu doc: Bat' : '🔇 Tu doc: Tat';
+              if (window._tsAutoRead) speak(q.question); };
+            if (window._tsAutoRead && READ_ALOUD) setTimeout(function () { speak(q.question); }, 400);
+          } catch (ee) {}
           var btns = root.querySelectorAll('.game-option-btn');
           var answered = false;
           function answer(idx) {
@@ -447,8 +457,20 @@ export const ExportEngine = {
             else { Sound.playWrong(); streak = 0; note = idx < 0 ? 'Het gio!' : 'Chua dung, co len!'; }
             var bn = document.getElementById('bonus');
             if (bn) { bn.textContent = note; bn.style.color = ok ? '#15803D' : '#B45454'; }
-            var e = document.getElementById('exp'); if (e && q.explanation) e.style.display = 'block';
-            setTimeout(function () { qIndex++; showQ(); }, 1400);
+            var e = document.getElementById('exp');
+            if (e && q.explanation) {
+              e.style.display = 'block';
+              if (READ_ALOUD && !e.querySelector('[data-exp-speak]')) {
+                var sb = document.createElement('button');
+                sb.setAttribute('data-exp-speak', '1');
+                sb.className = 'btn btn-secondary btn-sm';
+                sb.style.marginLeft = '8px';
+                sb.textContent = '🔊 Doc giai thich';
+                sb.onclick = function (ev) { if (ev) ev.stopPropagation(); speak(q.explanation); };
+                e.appendChild(sb);
+              }
+            }
+            setTimeout(function () { qIndex++; showQ(); }, 2000);
           }
           for (var b = 0; b < btns.length; b++) {
             (function (el) { el.onclick = function () { answer(parseInt(el.getAttribute('data-i'), 10)); }; })(btns[b]);
@@ -496,10 +518,12 @@ export const ExportEngine = {
             var ok = c === (q.correctAnswer || 0);
             document.getElementById('bT').disabled = true; document.getElementById('bF').disabled = true;
             var gain = 0, note = '';
+            var reflex = Math.max(0, (Date.now() - t0) / 1000);
             if (ok) {
               Sound.playCorrect(); okCount++; streak++; if (streak > best) best = streak;
               gain = (q.points || 10);
-              if (doSpeed) { var el = (Date.now() - t0) / 1000; if (el < 15) { var ex = Math.max(1, Math.round(gain * 0.3)); gain += ex; note += '⚡Nhanh +' + ex + ' • '; } }
+              note += '⚡Phan xa ' + reflex.toFixed(1) + 's • ';
+              if (doSpeed) { var el = reflex; if (el < 15) { var ex = Math.max(1, Math.round(gain * 0.3)); gain += ex; note += 'Nhanh +' + ex + ' • '; } }
               if (doStreak && streak % 3 === 0) { gain += 5; note += '🔥Chuoi ' + streak + ' +5 • '; }
               score += gain; note += '+' + gain + 'd';
               var wb = document.getElementById(c === 0 ? 'bT' : 'bF');
@@ -525,6 +549,23 @@ export const ExportEngine = {
           }
           document.getElementById('bT').onclick = function () { pick(0); };
           document.getElementById('bF').onclick = function () { pick(1); };
+          // Dong bo preview: vuot trai/phai tren may tinh bang
+          try {
+            var tfCard = root.querySelector('.game-body');
+            var tx = null;
+            if (tfCard) {
+              tfCard.addEventListener('touchstart', function (e) {
+                tx = (e.touches && e.touches[0]) ? e.touches[0].clientX : null;
+              }, { passive: true });
+              tfCard.addEventListener('touchend', function (e) {
+                if (tx == null) return;
+                var ex2 = (e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0].clientX : tx;
+                var dx = ex2 - tx; tx = null;
+                if (Math.abs(dx) < 40) return;
+                pick(dx > 0 ? 1 : 0);
+              }, { passive: true });
+            }
+          } catch (ee2) {}
           document.onkeydown = function (e) {
             if (e.key === '1' || e.key === 'ArrowLeft') pick(0);
             if (e.key === '2' || e.key === 'ArrowRight') pick(1); };
@@ -539,10 +580,15 @@ export const ExportEngine = {
           return { f: q.front || q.question, img: q.image || '',
             b: q.back || ((q.answers && q.answers[q.correctAnswer]) || q.explanation || 'Dap an') }; });
         if (!cards.length) cards = [{ f: 'Chua co the hoc', b: 'Hay them cau hoi trong TeacherStudio' }];
-        var idx = 0, flip = false, done = 0;
+        var idx = 0, flip = false, done = 0, autoF = false, autoT1 = null, autoT2 = null;
         function show() {
           var c = cards[idx]; if (!c) { document.onkeydown = null; finishScreen('Hoan thanh bo the!'); return; }
           flip = false;
+          if (autoT1) { clearTimeout(autoT1); autoT1 = null; }
+          if (autoT2) { clearTimeout(autoT2); autoT2 = null; }
+          var fLen = String(c.f || '').length, bLen = String(c.b || '').length;
+          var fSize = fLen > 120 ? 15 : fLen > 60 ? 17 : 20;
+          var bSize = bLen > 120 ? 15 : bLen > 60 ? 17 : 20;
           root.innerHTML = header('The ' + (idx + 1) + ' / ' + cards.length,
             '<span>Da nho: <strong>' + done + '</strong></span>') +
             '<div class="game-body text-center" style="max-width:520px;margin:0 auto;width:100%;">' +
@@ -551,14 +597,15 @@ export const ExportEngine = {
             '<div style="position:absolute;width:100%;height:100%;backface-visibility:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;background:var(--theme-surface);border-radius:16px;overflow-y:auto;">' +
             '<span class="badge badge-primary">Mat truoc</span>' +
             (c.img ? '<img class="q-img" style="max-height:100px;margin:8px auto;" src="' + c.img + '" alt="Minh hoa">' : '') +
-            '<div style="font-size:20px;font-weight:600;margin-top:8px;">' + esc(c.f) + '</div></div>' +
+            '<div style="font-size:' + fSize + 'px;font-weight:600;margin-top:8px;line-height:1.4;">' + esc(c.f) + '</div></div>' +
             '<div style="position:absolute;width:100%;height:100%;backface-visibility:hidden;transform:rotateY(180deg);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;background:rgba(63,95,85,.1);border-radius:16px;">' +
-            '<span class="badge badge-success">Mat sau</span><div style="font-size:20px;font-weight:600;margin-top:8px;">' + esc(c.b) + '</div></div>' +
+            '<span class="badge badge-success">Mat sau</span><div style="font-size:' + bSize + 'px;font-weight:600;margin-top:8px;line-height:1.4;">' + esc(c.b) + '</div></div>' +
             '</div></div>' +
             '<div style="display:flex;gap:12px;justify-content:center;margin-top:24px;flex-wrap:wrap;">' +
             '<button class="btn btn-secondary" id="bP">← Truoc</button>' +
             '<button class="btn btn-primary" id="bF">🔄 Lat the</button>' +
             '<button class="btn btn-secondary" id="bN">Sau →</button>' +
+            '<button class="btn btn-secondary btn-sm" id="bA">' + (autoF ? '⏸ Tat tu lat' : '▶ Tu lat 5s') + '</button>' +
             '<button class="btn btn-secondary btn-sm" id="bS">🎲 Xao</button>' +
             (READ_ALOUD ? '<button class="btn btn-secondary btn-sm" data-speak="' + esc(c.f + '. ' + c.b) + '">🔊 Đọc</button>' : '') +
             '</div></div>' +
@@ -569,6 +616,13 @@ export const ExportEngine = {
           document.getElementById('bP').onclick = function () { if (idx > 0) { idx--; show(); } };
           document.getElementById('bN').onclick = function () { idx++; show(); };
           document.getElementById('bS').onclick = function () { Sound.playClick(); cards = shuffle(cards); idx = 0; show(); };
+          document.getElementById('bA').onclick = function () { autoF = !autoF; show(); };
+          if (autoF) {
+            autoT1 = setTimeout(function () {
+              var f = document.getElementById('bF'); if (f) f.click();
+              autoT2 = setTimeout(function () { var n = document.getElementById('bN'); if (n) n.click(); }, 2500);
+            }, 2500);
+          }
           if (PROFILE === 'canva') notifyParent();
         }
         document.onkeydown = function (e) {
@@ -580,13 +634,27 @@ export const ExportEngine = {
 
       /* ---- MATCHING ---- */
       function runMatching() {
-        var pairs = pairsFromContent(6);
+        var allP = pairsFromContent(6);
+        var pairN = 6;
+        var pairs = allP.slice(0, pairN);
         if (!pairs.length) { finishScreen('Chua co cap ghep'); return; }
         var left = shuffle(pairs), right = shuffle(pairs);
         var selL = null, selR = null, matched = {}, mCount = 0, tries = 0, errs = 0, checking = false;
+        function setPairN(n) {
+          pairN = n; pairs = allP.slice(0, n);
+          left = shuffle(pairs); right = shuffle(pairs);
+          selL = null; selR = null; matched = {}; mCount = 0; tries = 0; errs = 0; checking = false;
+          draw();
+        }
         function draw() {
           root.innerHTML = header('Ghep doi tuong ung', '<span>Da ghep: <strong>' + mCount + ' / ' + pairs.length + '</strong></span>') +
             '<div class="game-body" style="max-width:760px;margin:0 auto;width:100%;">' +
+            '<div style="display:flex;gap:8px;justify-content:center;margin-bottom:10px;">' +
+            [3, 4, 6].map(function (n) {
+              return '<button class="btn btn-sm" data-pn="' + n + '" style="' +
+                (pairs.length === n ? 'background:var(--theme-primary);color:#fff;' : 'background:rgba(0,0,0,.06);') +
+                'padding:6px 12px;border-radius:8px;border:none;cursor:pointer;">' + n + ' cap</button>';
+            }).join('') + '</div>' +
             '<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;width:100%;">' +
             '<div>' + left.map(function (p) {
               return matched[p.id] ? '<button class="match-btn matched" disabled>✓ ' + esc(p.left) + '</button>'
@@ -596,11 +664,20 @@ export const ExportEngine = {
                 : '<button class="match-btn mr" data-id="' + p.id + '"' + (selR === p.id ? ' style="border-color:var(--theme-primary);"' : '') + '>' + esc(p.right) + '</button>';
             }).join('') + '</div></div></div>' + footer('Chon 1 muc cot A roi chon muc cot B', score + ' diem • Thu ' + tries + ' • Sai ' + errs) +
             '<div style="text-align:center;padding:8px;"><button class="btn btn-secondary btn-sm" id="mSh">🎲 Xao lai</button></div>';
+          var pns = root.querySelectorAll('[data-pn]');
+          for (var pn = 0; pn < pns.length; pn++) { (function (b) {
+            b.onclick = function () { Sound.playClick(); setPairN(parseInt(b.getAttribute('data-pn'), 10)); }; })(pns[pn]); }
           var ls = root.querySelectorAll('.ml'), rs = root.querySelectorAll('.mr');
           for (var i = 0; i < ls.length; i++) { (function (b) {
-            b.onclick = function () { Sound.playClick(); selL = parseInt(b.getAttribute('data-id'), 10); check(); }; })(ls[i]); }
+            b.onclick = function () { Sound.playClick();
+              var id = parseInt(b.getAttribute('data-id'), 10);
+              if (selL === id && selR == null) { selL = null; draw(); return; }
+              selL = id; check(); }; })(ls[i]); }
           for (var j = 0; j < rs.length; j++) { (function (b) {
-            b.onclick = function () { Sound.playClick(); selR = parseInt(b.getAttribute('data-id'), 10); check(); }; })(rs[j]); }
+            b.onclick = function () { Sound.playClick();
+              var id2 = parseInt(b.getAttribute('data-id'), 10);
+              if (selR === id2 && selL == null) { selR = null; draw(); return; }
+              selR = id2; check(); }; })(rs[j]); }
           document.getElementById('mSh').onclick = function () {
             if (checking) return;
             Sound.playClick(); left = shuffle(left); right = shuffle(right);
@@ -688,6 +765,10 @@ export const ExportEngine = {
             b.onclick = function () { Sound.playClick(); picked = parseInt(b.getAttribute('data-id'), 10); draw(); }; })(chips[i]); }
           var drops = root.querySelectorAll('[data-drop]');
           for (var j = 0; j < drops.length; j++) { (function (b) {
+            b.onmouseover = function () {
+              if (picked != null) { b.style.boxShadow = '0 0 0 3px rgba(63,95,85,.35)'; b.style.transform = 'scale(1.02)'; }
+            };
+            b.onmouseout = function () { b.style.boxShadow = 'none'; b.style.transform = 'none'; };
             b.onclick = function () {
               if (picked == null) return;
               var cat = b.getAttribute('data-drop');
@@ -708,27 +789,65 @@ export const ExportEngine = {
         if (!pairs.length) { finishScreen('Chua co cap noi'); return; }
         var left = shuffle(pairs), right = shuffle(pairs);
         var sel = null, done = {}, dCount = 0, tries = 0, checking = false;
+        var pal = ['#2563EB', '#DC2626', '#059669', '#D97706', '#7C3AED', '#0284C7'];
+        function col(id) { return pal[Number(id) % pal.length]; }
+        function paintWires() {
+          try {
+            var board = document.getElementById('cxBoard'), svg = document.getElementById('cxSvg');
+            if (!board || !svg) return;
+            var br = board.getBoundingClientRect();
+            svg.setAttribute('viewBox', '0 0 ' + Math.max(1, br.width) + ' ' + Math.max(1, br.height));
+            var html = '';
+            for (var key in done) {
+              if (!done[key]) continue;
+              var l = board.querySelector('.cl[data-id="' + key + '"], .match-btn[data-id="' + key + '"]');
+              var lBtn = null, rBtn = null;
+              var lls = board.querySelectorAll('[data-id="' + key + '"]');
+              for (var li = 0; li < lls.length; li++) {
+                if (lls[li].classList.contains('cl')) lBtn = lls[li];
+                if (lls[li].classList.contains('cr')) rBtn = lls[li];
+              }
+              if (!lBtn || !rBtn) continue;
+              var lr = lBtn.getBoundingClientRect(), rr = rBtn.getBoundingClientRect();
+              var x1 = lr.right - br.left, y1 = lr.top + lr.height / 2 - br.top;
+              var x2 = rr.left - br.left, y2 = rr.top + rr.height / 2 - br.top;
+              var mx = (x1 + x2) / 2, c = col(key);
+              html += '<path d="M ' + x1 + ' ' + y1 + ' C ' + mx + ' ' + y1 + ', ' + mx + ' ' + y2 + ', ' + x2 + ' ' + y2 +
+                '" fill="none" stroke="' + c + '" stroke-width="3.5" stroke-linecap="round" opacity="0.9"/>';
+            }
+            svg.innerHTML = html;
+          } catch (e) {}
+        }
         function draw() {
           root.innerHTML = header('Noi y tuong quan', '<span>Da noi: <strong>' + dCount + ' / ' + pairs.length + '</strong></span>') +
             '<div class="game-body" style="max-width:680px;margin:0 auto;width:100%;">' +
-            '<div style="display:flex;gap:32px;width:100%;">' +
-            '<div style="flex:1;display:flex;flex-direction:column;gap:10px;">' +
-            left.map(function (p) { return done[p.id]
-              ? '<button class="match-btn matched" disabled>● ' + esc(p.left) + '</button>'
-              : '<button class="match-btn cl" data-id="' + p.id + '"' + (sel === p.id ? ' style="border-color:var(--theme-primary);"' : '') + '>● ' + esc(p.left) + '</button>'; }).join('') +
-            '</div><div style="flex:1;display:flex;flex-direction:column;gap:10px;">' +
-            right.map(function (p) { return done[p.id]
-              ? '<button class="match-btn matched" disabled>' + esc(p.right) + ' ●</button>'
-              : '<button class="match-btn cr" data-id="' + p.id + '">' + esc(p.right) + ' ●</button>'; }).join('') +
-            '</div></div></div>' + footer('Chon trai truoc, phai sau', score + ' diem • Thu ' + tries) +
+            '<div id="cxBoard" style="display:flex;gap:56px;width:100%;position:relative;">' +
+            '<svg id="cxSvg" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:5;"></svg>' +
+            '<div style="flex:1;display:flex;flex-direction:column;gap:10px;position:relative;z-index:2;">' +
+            left.map(function (p) {
+              var c = col(p.id);
+              return done[p.id]
+                ? '<button class="match-btn matched" data-id="' + p.id + '" disabled style="border-color:' + c + ';"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + c + ';margin-right:6px;"></span>' + esc(p.left) + '</button>'
+                : '<button class="match-btn cl" data-id="' + p.id + '"' + (sel === p.id ? ' style="border-color:' + c + ';"' : '') + '><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + c + ';margin-right:6px;"></span>' + esc(p.left) + '</button>'; }).join('') +
+            '</div><div style="flex:1;display:flex;flex-direction:column;gap:10px;position:relative;z-index:2;">' +
+            right.map(function (p) {
+              var c2 = col(p.id);
+              return done[p.id]
+                ? '<button class="match-btn matched" data-id="' + p.id + '" disabled style="border-color:' + c2 + ';">' + esc(p.right) + '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + c2 + ';margin-left:6px;"></span></button>'
+                : '<button class="match-btn cr" data-id="' + p.id + '">' + esc(p.right) + '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + c2 + ';margin-left:6px;"></span></button>'; }).join('') +
+            '</div></div></div>' + footer('Chon trai truoc, phai sau • Bam lai de bo chon', score + ' diem • Thu ' + tries) +
             '<div style="text-align:center;padding:8px;"><button class="btn btn-secondary btn-sm" id="cRs">↺ Noi lai tu dau</button></div>';
           document.getElementById('cRs').onclick = function () {
             if (checking) return;
             Sound.playClick();
             done = {}; sel = null; tries = 0; score = 0; draw(); };
+          setTimeout(paintWires, 60);
           var ls = root.querySelectorAll('.cl'), rs = root.querySelectorAll('.cr');
           for (var i = 0; i < ls.length; i++) { (function (b) {
-            b.onclick = function () { Sound.playClick(); sel = parseInt(b.getAttribute('data-id'), 10); draw(); }; })(ls[i]); }
+            b.onclick = function () { Sound.playClick();
+              var id = parseInt(b.getAttribute('data-id'), 10);
+              if (sel === id) { sel = null; draw(); return; }
+              sel = id; draw(); }; })(ls[i]); }
           for (var j = 0; j < rs.length; j++) { (function (b) {
             b.onclick = function () {
               if (sel == null || checking) return;
@@ -746,7 +865,7 @@ export const ExportEngine = {
       /* ---- WHEEL ---- */
       function runWheel() {
         var list = wheelItems();
-        var full = list.slice(), ang = 0, spin = false, picked = null, hist = [];
+        var full = list.slice(), ang = 0, spin = false, picked = null, hist = [], autoRm = false;
         var colors = ['#3F5F55', '#D1A153', '#2F7C48', '#0284C7', '#818CF8', '#15803D', '#3B82F6', '#DC2626', '#D97706', '#9E4B37'];
         function draw() {
           root.innerHTML = header('Vong quay may man', '<span>Con lai: <strong>' + list.length + '</strong></span>') +
@@ -754,8 +873,10 @@ export const ExportEngine = {
             '<div style="position:absolute;top:-12px;left:50%;transform:translateX(-50%);border-left:14px solid transparent;border-right:14px solid transparent;border-top:24px solid #B45454;z-index:5;"></div>' +
             '<canvas id="wc" width="320" height="320" style="border-radius:50%;border:4px solid #fff;"></canvas>' +
             '<button id="wGo" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:68px;height:68px;border-radius:50%;background:var(--theme-primary);color:#fff;font-weight:700;border:4px solid #fff;cursor:pointer;">QUAY</button></div>' +
-            '<div id="wRes" style="margin-top:16px;font-size:20px;font-weight:700;min-height:32px;">' +
-            (picked ? '🎉 Ket qua: ' + esc(picked) : '') + '</div>' +
+            '<div id="wRes" style="margin-top:16px;font-size:30px;font-weight:800;min-height:48px;">' +
+            (picked ? '🎉 <span style="font-size:34px;">' + esc(picked) + '</span>' : '') + '</div>' +
+            '<label style="display:inline-flex;gap:6px;align-items:center;font-size:13px;margin-top:4px;cursor:pointer;">' +
+            '<input type="checkbox" id="wAuto"' + (autoRm ? ' checked' : '') + '> Tu bo muc vua trung</label>' +
             '<div style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap;justify-content:center;">' +
             '<button class="btn btn-primary btn-lg" id="wSpin">🎯 Quay ngay!</button>' +
             (picked ? '<button class="btn btn-secondary" id="wDel">✕ Bo muc nay</button>' : '') + '</div>' +
@@ -768,6 +889,8 @@ export const ExportEngine = {
           paint();
           document.getElementById('wGo').onclick = doSpin;
           document.getElementById('wSpin').onclick = doSpin;
+          var wa = document.getElementById('wAuto');
+          if (wa) wa.onchange = function () { autoRm = wa.checked; };
           function addName() {
             var v = document.getElementById('wAdd').value.trim().slice(0, 30);
             if (!v) return;
@@ -812,7 +935,20 @@ export const ExportEngine = {
               var na = (1.5 * Math.PI - (ang % (Math.PI * 2)) + Math.PI * 4) % (Math.PI * 2);
               picked = list[Math.floor(na / slice) % list.length];
               if (hist.indexOf(picked) < 0) hist.push(picked);
-              score += 10; draw(); }
+              score += 10;
+              try { if (window.speechSynthesis && picked) {
+                window.speechSynthesis.cancel();
+                var uu = new SpeechSynthesisUtterance('Chuc mung ' + String(picked).slice(0, 60));
+                uu.lang = 'vi-VN'; window.speechSynthesis.speak(uu); } } catch (e) {}
+              if (autoRm && picked) {
+                var keep = picked;
+                var ix = list.indexOf(keep); if (ix >= 0) list.splice(ix, 1);
+                picked = null; draw();
+                var wr = document.getElementById('wRes');
+                if (wr) wr.innerHTML = 'Vua goi: <strong>' + esc(keep) + '</strong> (da tu bo)';
+                return;
+              }
+              draw(); }
           }
           requestAnimationFrame(fr);
         }
@@ -858,7 +994,11 @@ export const ExportEngine = {
             (q.answers || []).map(function (a, i) {
               return '<button class="game-option-btn" data-i="' + i + '"><span class="game-option-letter">' +
                 String.fromCharCode(65 + i) + '</span><span>' + esc(a) + '</span></button>'; }).join('') +
-            '</div></div>' + footer('Tra loi dung de mo manh ghep • Luot thu: ' + tries);
+            '</div></div>' + footer('Tra loi dung de mo manh ghep • Luot thu: ' + tries) +
+            '<div style="display:flex;gap:8px;justify-content:center;padding:8px;flex-wrap:wrap;">' +
+            '<button class="btn btn-secondary btn-sm" id="jCover">🖼️ Doi tranh</button>' +
+            '<button class="btn btn-secondary btn-sm" id="jGuess">🤔 Doan som +20d</button>' +
+            '<input type="file" id="jFile" accept="image/*" style="display:none;"></div>';
           var bs = root.querySelectorAll('.game-option-btn');
           var jigLock = false;
           for (var k = 0; k < bs.length; k++) { (function (i) {
@@ -875,6 +1015,38 @@ export const ExportEngine = {
                   if (fz[z].textContent.indexOf('Luot thu') >= 0) fz[z].textContent = 'Tra loi dung de mo manh ghep • Luot thu: ' + tries;
                 }
                 setTimeout(function () { bs[i].classList.remove('incorrect'); }, 600); } }; })(k); }
+          var jc = document.getElementById('jCover'), jf = document.getElementById('jFile');
+          if (jc && jf) {
+            jc.onclick = function () { jf.click(); };
+            jf.onchange = function () {
+              var f = jf.files && jf.files[0]; if (!f) return;
+              var rd = new FileReader();
+              rd.onload = function () {
+                try {
+                  var im = new Image();
+                  im.onload = function () {
+                    var cv = document.createElement('canvas');
+                    var sc = Math.min(1, 800 / im.width);
+                    cv.width = Math.round(im.width * sc); cv.height = Math.round(im.height * sc);
+                    cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height);
+                    cover = cv.toDataURL('image/jpeg', 0.82);
+                    Sound.playCorrect(); draw();
+                  };
+                  im.src = rd.result;
+                } catch (e) {}
+              };
+              rd.readAsDataURL(f);
+            };
+          }
+          var jg = document.getElementById('jGuess');
+          if (jg) jg.onclick = function () {
+            if (window.confirm('HS doan tranh som co dung khong? OK = Dung (+20d, mo het) • Cancel = Sai')) {
+              Sound.playCheer(); score += 20;
+              for (var gi = 0; gi < total; gi++) open[gi] = true;
+              n = total;
+              setTimeout(function () { finishScreen('Da mo het buc tranh bi mat!'); }, 500);
+            } else { Sound.playWrong(); }
+          };
           if (PROFILE === 'canva') notifyParent();
         }
         draw();
@@ -887,17 +1059,21 @@ export const ExportEngine = {
           root.innerHTML = header('Giai o chu vui', '<span>Da giai: <strong>' + sCount + ' / ' + words.length + '</strong></span>') +
             '<div class="game-body" style="max-width:680px;margin:0 auto;width:100%;gap:12px;">' +
             words.map(function (w, i) {
+              var boxes = '';
+              for (var bi = 0; bi < w.answer.length; bi++) boxes += '□';
               return '<div style="padding:14px;border:2px solid ' + (solved[w.id] ? '#4D7A5A' : 'var(--theme-border)') +
                 ';border-radius:10px;background:var(--theme-surface);width:100%;">' +
-                '<div class="font-semibold" style="margin-bottom:8px;">Hang ' + (i + 1) + ': ' + esc(w.clue) + '</div>' +
+                '<div class="font-semibold" style="margin-bottom:4px;">Hang ' + (i + 1) + ': ' + esc(w.clue) + '</div>' +
+                '<div style="font-size:15px;letter-spacing:3px;margin-bottom:8px;opacity:.7;">' + boxes + ' <span style="font-size:12px;letter-spacing:0;">(' + w.answer.length + ' chu)</span></div>' +
                 '<div style="display:flex;gap:10px;flex-wrap:wrap;">' +
                 '<input class="cross-input" data-id="' + w.id + '" maxlength="' + w.answer.length + '" placeholder="' +
-                w.answer.length + ' ky tu"' + (solved[w.id] ? ' value="' + esc(w.answer) + '" disabled' : '') + '>' +
+                w.answer.length + ' ky tu" autocapitalize="characters" autocomplete="off" spellcheck="false"' + (solved[w.id] ? ' value="' + esc(w.answer) + '" disabled' : '') + '>' +
                 '<button class="btn btn-primary btn-sm" data-check="' + w.id + '"' + (solved[w.id] ? ' disabled' : '') + '>' +
                 (solved[w.id] ? '✓ Da giai' : 'Kiem tra') + '</button>' +
                 ((!solved[w.id] && !hinted[w.id]) ? '<button class="btn btn-secondary btn-sm" data-hint="' + w.id + '">💡 Goi y</button>' : '') +
                 '</div></div>'; }).join('') +
-            '</div>' + footer('Nhap khong dau, in hoa', score + ' diem');
+            '</div>' + footer('Nhap khong dau, in hoa', score + ' diem') +
+            '<div style="text-align:center;padding:8px;"><button class="btn btn-primary btn-sm" id="cwAll">📋 Cham het ca bai</button></div>';
           var cs = root.querySelectorAll('[data-check]');
           for (var i = 0; i < cs.length; i++) { (function (b) {
             b.onclick = function () {
@@ -919,6 +1095,31 @@ export const ExportEngine = {
               Sound.playClick(); hinted[id] = true;
               inp.value = w.answer.charAt(0); inp.focus();
               b.disabled = true; b.textContent = '💡 Da goi y (-10d)'; }; })(hs[hI]); }
+          var ins = root.querySelectorAll('.cross-input');
+          for (var ni = 0; ni < ins.length; ni++) { (function (inp) {
+            inp.oninput = function () {
+              var p = null;
+              try { p = inp.selectionStart; } catch (e) {}
+              inp.value = String(inp.value || '').toUpperCase();
+              try { if (p != null) inp.setSelectionRange(p, p); } catch (e2) {}
+            }; })(ins[ni]); }
+          var ca = document.getElementById('cwAll');
+          if (ca) ca.onclick = function () {
+            Sound.playClick();
+            var ok = 0;
+            for (var wi = 0; wi < words.length; wi++) {
+              var w = words[wi];
+              if (solved[w.id]) continue;
+              var inp2 = root.querySelector('.cross-input[data-id="' + w.id + '"]');
+              if (!inp2) continue;
+              if (norm(inp2.value) === w.answer && norm(inp2.value).length) {
+                solved[w.id] = true; sCount++; score += (hinted[w.id] ? 10 : 20); ok++;
+              } else { inp2.style.borderColor = '#B45454'; }
+            }
+            if (ok) Sound.playCorrect(); else Sound.playWrong();
+            draw();
+            if (sCount >= words.length) setTimeout(function () { finishScreen(); }, 700);
+          };
           if (PROFILE === 'canva') notifyParent();
         }
         draw();
@@ -941,6 +1142,7 @@ export const ExportEngine = {
           '<button class="btn btn-secondary btn-sm" id="tMode">⏳ Dem nguoc</button></div>' +
           '<div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">' +
           '<button class="btn btn-primary btn-lg" id="tGo">▶ Bat dau</button>' +
+          '<button class="btn btn-secondary btn-lg" id="tPlus" title="Cong 30 giay khi thao luan lo gio">+30s</button>' +
           '<button class="btn btn-secondary btn-lg" id="tRs">🔄 Dat lai</button></div></div>' +
           footer('Chuong reo 3 lan khi het gio');
         var d = document.getElementById('tD'), go = document.getElementById('tGo');
@@ -953,9 +1155,14 @@ export const ExportEngine = {
           if (run) tick = setInterval(function () {
             if (mode === 'up') { up++; d.textContent = fmt(up); return; }
             if (left > 0) { left--; d.textContent = fmt(left);
-              if (left <= 10) { d.style.color = '#B45454'; Sound.playTick(); } }
+              if (left <= 10) { d.style.color = '#B45454'; Sound.playTick(); if (left <= 5) Sound.playTick(); } }
             else { stop(); run = false; bell3(); d.textContent = 'HET GIO! 🔔'; d.style.color = '#B45454'; left = total; up = 0; go.innerHTML = '▶ Bat dau lai'; }
           }, 1000);
+        };
+        document.getElementById('tPlus').onclick = function () {
+          Sound.playClick(); total += 30;
+          if (mode === 'down') left += 30;
+          d.textContent = fmt(mode === 'up' ? up : left); d.style.color = '';
         };
         document.getElementById('tRs').onclick = function () { stop(); run = false; left = total; up = 0;
           d.textContent = fmt(mode === 'up' ? 0 : left); d.style.color = ''; go.innerHTML = '▶ Bat dau'; };
@@ -1006,6 +1213,7 @@ export const ExportEngine = {
           var tc = team === 'blue' ? '#2563EB' : '#DC2626';
           root.innerHTML = header('Keo co dong doi', '<span>Cau ' + Math.min(qi + 1, qs.length) + '/' + qs.length + ' • Dich ' + goal + '</span> <span><strong style="color:#2563EB;">🔵 ' + bS + '</strong> - <strong style="color:#DC2626;">' + rS + ' 🔴</strong></span> <span class="badge" style="background:' + tc + ';color:#fff;">LUOT: ' + tn + '</span>') +
             '<div class="game-body" style="max-width:800px;margin:0 auto;width:100%;">' +
+            '<div style="font-size:26px;font-weight:800;color:' + tc + ';background:#fff;border:2px solid ' + tc + ';border-radius:12px;padding:8px 22px;margin-bottom:10px;text-align:center;">👉 ' + tn + ' TRA LOI</div>' +
             '<div style="width:100%;height:90px;background:var(--theme-surface);border:2px solid var(--theme-border);border-radius:16px;position:relative;display:flex;align-items:center;justify-content:center;margin-bottom:20px;overflow:hidden;">' +
             '<div style="position:absolute;width:2px;height:100%;background:#94A3B8;left:50%;"></div>' +
             '<div style="position:absolute;left:16px;font-weight:700;color:#2563EB;">🏁 XANH</div>' +
@@ -1045,38 +1253,54 @@ export const ExportEngine = {
           { question: '7 + 5 = ?', answers: ['11', '12', '13', '10'], correctAnswer: 1 },
           { question: 'Con vat nao de trung?', answers: ['Ga', 'Cho', 'Meo', 'Bo'], correctAnswer: 0 },
           { question: '1 tuan may ngay?', answers: ['5', '6', '7', '8'], correctAnswer: 2 }];
-        var qi = 0, prog = 0, okCount = 0;
+        var qi = 0, prog = 0, okCount = 0, blueP = 0, redP = 0, team2 = 'blue';
         var step = 100 / qs.length;
         var t0 = Date.now();
         function draw() {
+          prog = Math.max(blueP, redP);
           var q = qs[qi];
-          if (!q || prog >= 100) {
+          if (!q || blueP >= 100 || redP >= 100) {
             var secs = Math.max(1, Math.round((Date.now() - t0) / 1000));
-            finishScreen('Ve dich! 🏁', 'Dung ' + okCount + '/' + qs.length + ' cau • ' + Math.floor(secs / 60) + ':' + String(secs % 60).padStart(2, '0'));
+            var win = blueP > redP ? 'DOI XANH 🔵 THANG!' : redP > blueP ? 'DOI DO 🔴 THANG!' : 'HOA NHAU 🤝';
+            finishScreen('Ve dich! 🏁 ' + win, 'Dung ' + okCount + '/' + qs.length + ' cau • Xanh ' + Math.floor(blueP) + '% - Do ' + Math.floor(redP) + '% • ' + Math.floor(secs / 60) + ':' + String(secs % 60).padStart(2, '0'));
             return;
           }
-          root.innerHTML = header('Dua xe toc do', '<span>Dung ' + okCount + '/' + qs.length + ' cau • Quang duong: <strong>' + Math.floor(Math.min(100, prog)) + '%</strong></span>') +
+          var tn2 = team2 === 'blue' ? 'DOI XANH' : 'DOI DO';
+          var tc2 = team2 === 'blue' ? '#2563EB' : '#DC2626';
+          root.innerHTML = header('Dua xe toc do', '<span>🔵 ' + Math.floor(blueP) + '% • 🔴 ' + Math.floor(redP) + '%</span> <span class="badge" style="background:' + tc2 + ';color:#fff;">Luot: ' + tn2 + '</span>') +
             '<div class="game-body" style="max-width:800px;margin:0 auto;width:100%;">' +
-            '<div style="width:100%;height:80px;background:#334155;border-radius:12px;position:relative;overflow:hidden;margin-bottom:20px;border:3px solid #1E293B;">' +
+            '<div style="font-size:20px;font-weight:800;color:' + tc2 + ';margin-bottom:6px;text-align:center;">👉 ' + tn2 + ' TRA LOI (Cau ' + Math.min(qi + 1, qs.length) + '/' + qs.length + ')</div>' +
+            '<div style="width:100%;height:64px;background:#334155;border-radius:12px;position:relative;overflow:hidden;margin-bottom:8px;border:3px solid #1E293B;">' +
             '<div style="position:absolute;top:50%;left:0;right:0;border-top:2px dashed #CBD5E1;"></div>' +
             '<div style="position:absolute;right:12px;top:0;bottom:0;width:14px;background:repeating-linear-gradient(45deg,#000,#000 6px,#fff 6px,#fff 12px);"></div>' +
-            '<div style="position:absolute;left:' + Math.min(90, prog) + '%;top:50%;transform:translateY(-50%);font-size:32px;transition:left .6s;">🏎️</div></div>' +
-            '<div style="background:var(--theme-surface);border:2px solid var(--theme-border);border-radius:12px;padding:20px;text-align:center;width:100%;">' +
+            '<div style="position:absolute;left:' + Math.min(90, blueP) + '%;top:50%;transform:translateY(-50%);font-size:28px;transition:left .6s;">🔵🏎️</div></div>' +
+            '<div style="width:100%;height:64px;background:#334155;border-radius:12px;position:relative;overflow:hidden;margin-bottom:20px;border:3px solid #1E293B;">' +
+            '<div style="position:absolute;top:50%;left:0;right:0;border-top:2px dashed #CBD5E1;"></div>' +
+            '<div style="position:absolute;right:12px;top:0;bottom:0;width:14px;background:repeating-linear-gradient(45deg,#000,#000 6px,#fff 6px,#fff 12px);"></div>' +
+            '<div style="position:absolute;left:' + Math.min(90, redP) + '%;top:50%;transform:translateY(-50%);font-size:28px;transition:left .6s;">🔴🏎️</div></div>' +
+            '<div id="raceQ" style="background:var(--theme-surface);border:2px solid var(--theme-border);border-radius:12px;padding:20px;text-align:center;width:100%;">' +
             qImg(q, 140) + gvBadge(q) +
             '<div style="display:flex;gap:8px;align-items:flex-start;"><div class="game-q-text" style="font-size:19px;flex:1;">' + esc(q.question) + '</div>' + speakBtn(q.question) + '</div>' +
             '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
             (q.answers || []).map(function (a, i) {
               return '<button class="game-option-btn" data-i="' + i + '"><span class="game-option-letter">' +
                 String.fromCharCode(65 + i) + '</span><span>' + esc(a) + '</span></button>'; }).join('') +
-            '</div></div></div>' + footer('Dung het cac cau de ve dich 100%');
+            '</div></div></div>' + footer('Dung +' + Math.round(step) + '% cho doi minh • Sai xe khung, doi luot');
           var bs = root.querySelectorAll('.game-option-btn');
           var raceLock = false;
           for (var k = 0; k < bs.length; k++) { (function (i) {
             bs[i].onclick = function () {
               if (raceLock) return; raceLock = true;
               for (var d = 0; d < bs.length; d++) bs[d].disabled = true;
-              if (i === q.correctAnswer) { Sound.playCorrect(); bs[i].classList.add('correct'); okCount++; prog = Math.min(100, prog + step); score += 20; }
-              else { Sound.playWrong(); bs[i].classList.add('incorrect'); }
+              if (i === q.correctAnswer) { Sound.playCorrect(); bs[i].classList.add('correct'); okCount++;
+                if (team2 === 'blue') blueP = Math.min(100, blueP + step);
+                else redP = Math.min(100, redP + step);
+                prog = Math.max(blueP, redP); score += 20; }
+              else { Sound.playWrong(); bs[i].classList.add('incorrect');
+                try { var rq = document.getElementById('raceQ');
+                  if (rq) { rq.style.transform = 'translateX(-6px)';
+                    setTimeout(function () { rq.style.transform = 'none'; }, 180); } } catch (e) {} }
+              team2 = team2 === 'blue' ? 'red' : 'blue';
               qi++; setTimeout(draw, 850); }; })(k); }
           if (PROFILE === 'canva') notifyParent();
         }
