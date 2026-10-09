@@ -41,30 +41,22 @@ export class TugOfWarGame extends BaseGame {
     const teamColor = this.currentTeam === 'blue' ? '#2563EB' : '#DC2626';
 
     this.viewportEl.innerHTML = `
-      <div class="game-header">
+      <div class="game-header quiz-head">
         <span class="badge badge-primary">Kéo co đồng đội</span>
-        <span style="font-size: 13px; color: var(--theme-text-subtle);">Câu ${Math.min(this.currentQIndex + 1, this.questions.length)}/${this.questions.length} • Đích ${this.goal}</span>
-        <span style="font-size: 13px; font-weight: 700;"><span style="color: #2563EB;">🔵 ${this.blueScore}</span> - <span style="color: #DC2626;">${this.redScore} 🔴</span></span>
-        <span class="badge" style="background-color: ${teamColor}; color: #FFF; font-weight: 700;">LƯỢT CỦA: ${teamName}</span>
+        <span class="quiz-score">Câu ${Math.min(this.currentQIndex + 1, this.questions.length)}/${this.questions.length} • Đích ${this.goal} • Điểm <strong>${this.score}</strong></span>
+        <span class="tug-score"><span class="tug-blue">🔵 ${this.blueScore}</span> - <span class="tug-red">${this.redScore} 🔴</span></span>
+        <span class="badge tug-turn ${this.currentTeam}" style="background-color: ${teamColor};">LƯỢT: ${teamName}</span>
       </div>
 
-      <div class="game-body" style="width: 100%; max-width: 800px; margin: 0 auto; display: flex; flex-direction: column; align-items: center;">
-        
-        <!-- Tug of War Visual Track -->
-        <div style="width: 100%; height: 90px; background: var(--theme-surface); border: 2px solid var(--theme-border); border-radius: 16px; position: relative; overflow: hidden; margin-bottom: 24px; display: flex; align-items: center; justify-content: center;">
-          <!-- Center mark -->
-          <div style="position: absolute; width: 2px; height: 100%; background: #94A3B8; left: 50%;"></div>
-          <!-- Left team goal -->
-          <div style="position: absolute; left: 16px; font-weight: 700; color: #2563EB; font-size: 14px;">🏁 ĐỘI XANH</div>
-          <!-- Right team goal -->
-          <div style="position: absolute; right: 16px; font-weight: 700; color: #DC2626; font-size: 14px;">ĐỘI ĐỎ 🏁</div>
-
-          <!-- Rope and knot -->
-          <div style="position: absolute; width: 70%; height: 8px; background: #B45309; border-radius: 4px; left: 15%;"></div>
-          <!-- Knot ribbon indicator -->
-          <div id="rope-knot" style="position: absolute; left: calc(50% + ${Math.round(this.ropePosition * 150 / this.goal)}px); width: 28px; height: 28px; background: #FBBF24; border: 3px solid #78350F; border-radius: 50%; transform: translateX(-50%); transition: left 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); box-shadow: var(--shadow-sm); display: flex; align-items: center; justify-content: center; font-size: 12px;">
-            🎀
+      <div class="game-body tug-body">
+        <div class="tug-meter" title="Dây đang lệch ${this.ropePosition}/${this.goal}">
+          <span class="tug-flag left">🏁 XANH</span>
+          <div class="tug-track">
+            <div class="tug-center"></div>
+            <div class="tug-rope"></div>
+            <div id="rope-knot" class="tug-knot" style="left: calc(50% + ${Math.round(this.ropePosition * 150 / this.goal)}px);">🎀</div>
           </div>
+          <span class="tug-flag right">ĐỎ 🏁</span>
         </div>
 
         <!-- Question Box -->
@@ -144,16 +136,23 @@ export class TugOfWarGame extends BaseGame {
     this.viewportEl.innerHTML = `
       <div class="game-header">
         <span class="badge badge-success">Kéo co hoàn tất!</span>
+        <span class="quiz-score">${scoreLine} • Tổng <strong>${this.score}</strong> điểm</span>
       </div>
-      <div class="game-body text-center">
-        <div style="font-size: 64px; margin-bottom: 16px;">🏆</div>
-        <h2 style="font-size: 28px; margin-bottom: 12px;">CHIẾN THẮNG: ${winner}</h2>
-        <p style="color: var(--theme-text-subtle); margin-bottom: 8px;">${scoreLine}</p>
-        <p style="color: var(--theme-text-subtle); margin-bottom: 24px;">Hai đội đã thi đấu rất xuất sắc và đầy tinh thần đồng đội!</p>
+      <div class="game-body quiz-result-body">
+        <div class="quiz-result-card quiz-enter">
+          <div class="quiz-trophy">${winner.includes('HÒA') ? '🤝' : '🏆'}</div>
+          <h2 class="quiz-result-title">CHIẾN THẮNG: ${winner}</h2>
+          <div class="quiz-stat-row">
+            <span class="quiz-stat tug-blue">🔵 Xanh <strong>${this.blueScore}</strong></span>
+            <span class="quiz-stat tug-red">🔴 Đỏ <strong>${this.redScore}</strong></span>
+            <span class="quiz-stat">🧶 Dây <strong>${this.ropePosition}</strong>/${this.goal}</span>
+          </div>
+          <p class="quiz-hint">Hai đội đã thi đấu rất xuất sắc và đầy tinh thần đồng đội!</p>
+        </div>
         <button class="btn btn-primary btn-lg" id="btn-restart-tug">🔄 Thi đấu hiệp mới</button>
       </div>
       <div class="game-footer">
-        <span style="font-size: 13px; color: var(--theme-text-subtle);">TeacherStudio</span>
+        <span class="quiz-hint">TeacherStudio • ${scoreLine}</span>
       </div>
     `;
 

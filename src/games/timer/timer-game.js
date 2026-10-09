@@ -23,50 +23,56 @@ export class TimerGame extends BaseGame {
       const s = secs % 60;
       return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
     };
+    const pct = this.mode === 'up' ? 0 : Math.round(this.remainingSeconds / Math.max(1, this.totalSeconds) * 100);
 
     this.viewportEl.innerHTML = `
-      <div class="game-header">
-        <span class="badge badge-primary">Đồng hồ đếm ngược lớp học</span>
-        <span style="font-size: 13px; color: var(--theme-text-subtle);">${this.project.name || 'Thời gian thảo luận'}</span>
+      <div class="game-header quiz-head">
+        <span class="badge badge-primary">Đồng hồ lớp học</span>
+        <span class="quiz-score">${this.project.name || 'Thời gian thảo luận'} • <strong>${this.mode === 'down' ? 'Đếm ngược' : 'Đếm lên'}</strong></span>
       </div>
 
-      <div class="game-body text-center" style="display: flex; flex-direction: column; align-items: center; justify-content: center;">
-        
-        <!-- Big Clock Display -->
-        <div id="big-timer-display" style="font-size: 72px; font-weight: 700; font-family: monospace; letter-spacing: 2px; color: var(--theme-primary); margin-bottom: 24px; padding: 16px 36px; background: var(--theme-surface); border: 3px solid var(--theme-border); border-radius: 20px; box-shadow: var(--shadow-md);">
-          ${formatTime(this.remainingSeconds)}
+      <div class="game-body timer-body">
+        <div class="timer-ring-wrap">
+          <svg viewBox="0 0 120 120" width="150" height="150" class="timer-ring">
+            <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(0,0,0,.1)" stroke-width="10"/>
+            <circle id="timer-ring-fg" cx="60" cy="60" r="52" fill="none" stroke="var(--theme-primary)" stroke-width="10"
+              stroke-linecap="round" stroke-dasharray="326.7" stroke-dashoffset="${326.7 * (1 - pct / 100)}" transform="rotate(-90 60 60)"/>
+          </svg>
+          <div id="big-timer-display" class="timer-digits">${this.mode === 'up' ? formatTime(this.elapsedSeconds) : formatTime(this.remainingSeconds)}</div>
         </div>
+        ${this.mode === 'down' ? `<div class="quiz-progress" style="max-width:320px;" title="${pct}%"><div class="quiz-progress-fill" id="timer-bar" style="width:${pct}%;"></div></div>` : '<div class="quiz-hint">Đếm lên không giới hạn — bấm Dừng để chốt giờ</div>'}
 
         <!-- Presets -->
-        <div class="flex gap-2" style="margin-bottom: 16px; flex-wrap: wrap; justify-content: center;">
-          <button class="btn btn-secondary btn-sm preset-btn" data-time="60">1 phút</button>
-          <button class="btn btn-secondary btn-sm preset-btn" data-time="120">2 phút</button>
-          <button class="btn btn-secondary btn-sm preset-btn" data-time="180">3 phút</button>
-          <button class="btn btn-secondary btn-sm preset-btn" data-time="300">5 phút</button>
-          <button class="btn btn-secondary btn-sm preset-btn" data-time="600">10 phút</button>
+        <div class="timer-presets">
+          <button class="btn btn-secondary btn-sm preset-btn ${this.totalSeconds === 60 ? 'active' : ''}" data-time="60">1 phút</button>
+          <button class="btn btn-secondary btn-sm preset-btn ${this.totalSeconds === 120 ? 'active' : ''}" data-time="120">2 phút</button>
+          <button class="btn btn-secondary btn-sm preset-btn ${this.totalSeconds === 180 ? 'active' : ''}" data-time="180">3 phút</button>
+          <button class="btn btn-secondary btn-sm preset-btn ${this.totalSeconds === 300 ? 'active' : ''}" data-time="300">5 phút</button>
+          <button class="btn btn-secondary btn-sm preset-btn ${this.totalSeconds === 600 ? 'active' : ''}" data-time="600">10 phút</button>
         </div>
 
         <!-- Custom minutes + mode -->
-        <div class="flex gap-2" style="margin-bottom: 24px; flex-wrap: wrap; justify-content: center; align-items: center;">
-          <input type="number" class="input" id="inp-custom-min" min="1" max="120" value="3" style="width: 90px;" title="Số phút tùy chỉnh">
+        <div class="flex gap-2" style="margin-bottom: 20px; flex-wrap: wrap; justify-content: center; align-items: center;">
+          <input type="number" class="input" id="inp-custom-min" min="1" max="120" value="${Math.round(this.totalSeconds / 60)}" style="width: 90px;" title="Số phút tùy chỉnh">
           <button class="btn btn-secondary btn-sm" id="btn-custom-min">Đặt phút</button>
-          <button class="btn btn-secondary btn-sm" id="btn-timer-mode" title="Đổi đếm ngược / đếm lên">⏳ Đếm ngược</button>
+          <button class="btn btn-secondary btn-sm" id="btn-timer-mode" title="Đổi đếm ngược / đếm lên">${this.mode === 'down' ? '⏳ Đếm ngược' : '⏱️ Đếm lên'}</button>
         </div>
 
         <!-- Controls -->
         <div class="flex gap-3">
-          <button class="btn btn-primary btn-lg" id="btn-toggle-timer" style="padding: 12px 28px; font-size: 18px;">
+          <button class="btn btn-primary btn-lg timer-toggle" id="btn-toggle-timer">
             ${this.isRunning ? '⏸ Tạm dừng' : '▶ Bắt đầu'}
           </button>
           <button class="btn btn-secondary btn-lg" id="btn-reset-timer">
             🔄 Đặt lại
           </button>
         </div>
+        <div class="quiz-hint" id="timer-status" style="margin-top:10px;">${this.isRunning ? 'Đang chạy...' : 'Sẵn sàng — bấm Bắt đầu'}</div>
 
       </div>
 
-      <div class="game-footer">
-        <span style="font-size: 13px; color: var(--theme-text-subtle);">Chuông reo kết thúc báo hiệu hết giờ thảo luận</span>
+      <div class="game-footer quiz-foot">
+        <span class="quiz-hint">Chuông reo 3 lần khi hết giờ • F toàn màn hình</span>
       </div>
     `;
 
@@ -145,9 +151,27 @@ export class TimerGame extends BaseGame {
     });
   }
 
+  paintClock(display) {
+    const ring = this.viewportEl.querySelector('#timer-ring-fg');
+    const bar = this.viewportEl.querySelector('#timer-bar');
+    if (this.mode === 'up') {
+      if (ring) { ring.style.strokeDashoffset = '0'; ring.style.stroke = 'var(--theme-primary)'; }
+      return;
+    }
+    const pct = this.remainingSeconds / Math.max(1, this.totalSeconds);
+    if (ring) {
+      ring.style.strokeDashoffset = String(326.7 * (1 - pct));
+      ring.style.stroke = this.remainingSeconds <= 10 ? '#B45454' : 'var(--theme-primary)';
+    }
+    if (bar) bar.style.width = Math.round(pct * 100) + '%';
+    if (display) display.classList.toggle('is-low', this.remainingSeconds <= 10);
+  }
+
   runTimer() {
     this.stopTimer();
     const display = this.viewportEl.querySelector('#big-timer-display');
+    const status = this.viewportEl.querySelector('#timer-status');
+    if (status) status.textContent = 'Đang chạy... bấm Tạm dừng để nghỉ';
 
     this.timer = setInterval(() => {
       if (this.mode === 'up') {
@@ -170,6 +194,7 @@ export class TimerGame extends BaseGame {
             Sound.playTick();
           }
         }
+        this.paintClock(display);
       } else {
         this.stopTimer();
         this.isRunning = false;
@@ -180,7 +205,9 @@ export class TimerGame extends BaseGame {
         if (display) {
           display.textContent = 'HẾT GIỜ! 🔔';
           display.style.color = '#B45454';
+          display.classList.add('is-done');
         }
+        if (status) status.textContent = 'Hết giờ! Bấm Bắt đầu lại để chạy tiếp.';
         const toggleBtn = this.viewportEl.querySelector('#btn-toggle-timer');
         // Reset sẵn để bấm "Bắt đầu lại" chạy đúng, không phải bấm Đặt lại
         this.remainingSeconds = this.totalSeconds;

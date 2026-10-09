@@ -51,12 +51,16 @@ export class JigsawGame extends BaseGame {
     }
 
     this.viewportEl.innerHTML = `
-      <div class="game-header">
+      <div class="game-header quiz-head">
         <span class="badge badge-primary">Mảnh ghép bí mật</span>
-        <span style="font-size: 13px; color: var(--theme-text-subtle);">Đã mở: <strong>${this.revealedTiles.size} / ${this.totalTiles}</strong> mảnh</span>
+        <span class="quiz-score">Đã mở: <strong>${this.revealedTiles.size}/${this.totalTiles}</strong> mảnh • Điểm <strong>${this.score}</strong></span>
       </div>
 
-      <div class="game-body gv-side-2" style="display: flex; gap: 24px; align-items: center; justify-content: center; width: 100%; max-width: 840px;">
+      <div class="game-body">
+        <div class="quiz-progress" style="max-width:840px;" title="Tiến trình ${Math.round(this.revealedTiles.size / this.totalTiles * 100)}%">
+          <div class="quiz-progress-fill" style="width: ${Math.round(this.revealedTiles.size / this.totalTiles * 100)}%;"></div>
+        </div>
+        <div class="jigsaw-layout">
         
         <!-- Puzzle Grid with mystery background image -->
         <div style="position: relative; width: min(300px, 100%); aspect-ratio: 1 / 1; border-radius: 12px; overflow: hidden; box-shadow: var(--shadow-md); flex-shrink: 0; ${this.coverImage ? '' : 'background: linear-gradient(135deg, #1E3A8A, #3B82F6, #10B981);'}">
@@ -103,8 +107,8 @@ export class JigsawGame extends BaseGame {
 
       </div>
 
-      <div class="game-footer">
-        <span style="font-size: 13px; color: var(--theme-text-subtle);">Trả lời đúng câu hỏi để lật mở ô tranh tương ứng • Lượt thử: ${this.attempts}</span>
+      <div class="game-footer quiz-foot">
+        <span class="quiz-hint">Trả lời đúng để lật mở ô tranh • Lượt thử: ${this.attempts} • Câu ${Math.min(this.currentQIndex + 1, this.totalTiles)}/${this.totalTiles}</span>
       </div>
     `;
 
@@ -129,12 +133,44 @@ export class JigsawGame extends BaseGame {
           }, 800);
         } else {
           Sound.playWrong();
-          btn.classList.add('incorrect');
+          btn.classList.add('incorrect', 'quiz-shake');
           const footerNote = this.viewportEl.querySelector('.game-footer span');
-          if (footerNote) footerNote.textContent = `Trả lời đúng câu hỏi để lật mở ô tranh tương ứng • Lượt thử: ${this.attempts}`;
-          this.gameTimeout(() => { try { btn.classList.remove('incorrect'); } catch (e) {} }, 600);
+          if (footerNote) footerNote.textContent = `Chưa đúng, thử lại nhé! • Lượt thử: ${this.attempts}`;
+          this.gameTimeout(() => { try { btn.classList.remove('incorrect', 'quiz-shake'); } catch (e) {} }, 600);
         }
       };
     });
+  }
+
+  renderResultScreen() {
+    const accuracy = this.attempts ? Math.round(this.totalTiles / this.attempts * 100) : 100;
+    this.viewportEl.innerHTML = `
+      <div class="game-header">
+        <span class="font-semibold">Đã mở hết bức tranh bí mật!</span>
+        <span class="badge badge-success">Hoàn thành!</span>
+      </div>
+      <div class="game-body quiz-result-body">
+        <div class="quiz-result-card quiz-enter">
+          <div class="quiz-trophy">🖼️</div>
+          <h2 class="quiz-result-title">Mở ${this.revealedTiles.size}/${this.totalTiles} mảnh</h2>
+          <div class="quiz-stat-row">
+            <span class="quiz-stat">⭐ <strong>${this.score}</strong> điểm</span>
+            <span class="quiz-stat">🎯 Hiệu suất <strong>${Math.min(100, accuracy)}%</strong></span>
+            <span class="quiz-stat">🔁 Lượt thử <strong>${this.attempts}</strong></span>
+          </div>
+          <div class="quiz-hint">${this.attempts <= this.totalTiles ? 'Hoàn hảo, đúng hết ngay lần đầu! 🏆' : 'Càng ít lượt thử càng giỏi!'}</div>
+        </div>
+        <button class="btn btn-primary btn-lg" id="btn-restart-game">🔄 Chơi lại từ đầu</button>
+      </div>
+      <div class="game-footer"><span class="quiz-hint">TeacherStudio • ${this.score} điểm</span></div>
+    `;
+    const rb = this.viewportEl.querySelector('#btn-restart-game');
+    if (rb) rb.onclick = () => this.restart();
+  }
+
+  restart() {
+    this.score = 0;
+    this.currentQuestionIndex = 0;
+    this.start();
   }
 }

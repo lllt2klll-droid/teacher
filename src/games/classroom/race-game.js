@@ -27,6 +27,11 @@ export class RaceGame extends BaseGame {
     this.renderTrack();
   }
 
+  elapsedStr() {
+    const secs = Math.max(0, Math.round((Date.now() - (this.startTime || Date.now())) / 1000));
+    return `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
+  }
+
   renderTrack() {
     const q = this.questions[this.currentQIndex];
     if (!q || this.playerProgress >= 100) {
@@ -34,29 +39,32 @@ export class RaceGame extends BaseGame {
       return;
     }
     this.viewportEl.innerHTML = `
-      <div class="game-header">
+      <div class="game-header quiz-head">
         <span class="badge badge-primary">Đua xe tốc độ</span>
-        <span style="font-size: 13px; color: var(--theme-text-subtle);">Đúng ${this.correctCount}/${this.questions.length} câu • Quãng đường: <strong>${Math.min(100, Math.floor(this.playerProgress))}%</strong></span>
+        <span class="quiz-score">Đúng ${this.correctCount}/${this.questions.length} • <strong>${Math.min(100, Math.floor(this.playerProgress))}%</strong> • ⏱️ <strong>${this.elapsedStr()}</strong></span>
       </div>
 
-      <div class="game-body" style="width: 100%; max-width: 800px; margin: 0 auto;">
-        
+      <div class="game-body race-body">
+        <div class="quiz-progress" title="Quãng đường ${Math.min(100, Math.floor(this.playerProgress))}%">
+          <div class="quiz-progress-fill" style="width: ${Math.min(100, this.playerProgress)}%;"></div>
+        </div>
+
         <!-- Race Track -->
-        <div style="width: 100%; height: 80px; background: #334155; border-radius: 12px; position: relative; overflow: hidden; margin-bottom: 24px; border: 3px solid #1E293B;">
+        <div class="race-track">
           <!-- Track dashed line -->
-          <div style="position: absolute; top: 50%; left: 0; right: 0; height: 2px; border-top: 2px dashed #CBD5E1;"></div>
+          <div class="race-lane"></div>
           <!-- Finish Line -->
-          <div style="position: absolute; right: 12px; top: 0; bottom: 0; width: 14px; background: repeating-linear-gradient(45deg, #000, #000 6px, #FFF 6px, #FFF 12px);"></div>
+          <div class="race-finish"></div>
           
           <!-- Race Car -->
-          <div id="race-car" style="position: absolute; left: calc(${Math.min(90, this.playerProgress)}%); top: 50%; transform: translateY(-50%); font-size: 32px; transition: left 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);">
+          <div id="race-car" class="race-car" style="left: calc(${Math.min(90, this.playerProgress)}%);">
             🏎️
           </div>
         </div>
 
         <!-- Question Section -->
-        <div style="background: var(--theme-surface); border: 2px solid var(--theme-border); border-radius: 12px; padding: 20px; text-align: center;">
-          <div style="font-size: 14px; color: var(--theme-text-subtle); margin-bottom: 6px;">Trả lời đúng để xe tăng tốc về đích:</div>
+        <div class="quiz-card race-quiz-card">
+          <div class="quiz-hint" style="margin-bottom:6px;">Trả lời đúng để xe tăng tốc về đích:</div>
           ${questionImageHtml(q, 140)}
           ${teacherBadgeHtml(q, this.options.teacherMode)}
           <div style="display: flex; align-items: flex-start; justify-content: center; gap: 8px; margin-bottom: 20px;">
@@ -76,8 +84,8 @@ export class RaceGame extends BaseGame {
 
       </div>
 
-      <div class="game-footer">
-        <span style="font-size: 13px; color: var(--theme-text-subtle);">Trả lời đúng mọi câu để xe về đích 100%</span>
+      <div class="game-footer quiz-foot">
+        <span class="quiz-hint">Trả lời đúng mọi câu để xe về đích 100% • Sai không bị trừ đường</span>
       </div>
     `;
 
@@ -113,23 +121,29 @@ export class RaceGame extends BaseGame {
     const acc = Math.round(this.correctCount / total * 100);
     const mm = Math.floor(secs / 60);
     const ss = String(secs % 60).padStart(2, '0');
+    const grade = acc >= 90 ? 'Vô địch! 🏆' : acc >= 75 ? 'Tuyệt vời! 🎉' : acc >= 50 ? 'Về đích! 💪' : 'Cố lên, đua lại nhé! 🌱';
     this.viewportEl.innerHTML = `
       <div class="game-header">
         <span class="font-semibold">Về đích! 🏁</span>
         <span class="badge badge-success">Hoàn thành!</span>
       </div>
-      <div class="game-body text-center">
-        <div style="font-size: 48px; margin-bottom: 12px;">🏁</div>
-        <h2 style="font-size: 26px; margin-bottom: 8px;">Đúng ${this.correctCount}/${total} câu (${acc}%)</h2>
-        <p style="font-size: 16px; color: var(--theme-text-subtle); margin-bottom: 24px;">
-          Thời gian: <strong>${mm}:${ss}</strong> • Điểm số: <strong style="color: var(--theme-primary); font-size: 24px;">${this.score}</strong> điểm
-        </p>
+      <div class="game-body quiz-result-body">
+        <div class="quiz-result-card quiz-enter">
+          <div class="quiz-trophy">🏁</div>
+          <h2 class="quiz-result-title">Đúng ${this.correctCount}/${total} câu (${acc}%)</h2>
+          <div class="quiz-grade">${grade}</div>
+          <div class="quiz-stat-row">
+            <span class="quiz-stat">⭐ <strong>${this.score}</strong> điểm</span>
+            <span class="quiz-stat">⏱️ <strong>${mm}:${ss}</strong></span>
+            <span class="quiz-stat">🏎️ <strong>${Math.min(100, Math.floor(this.playerProgress))}%</strong> đường</span>
+          </div>
+        </div>
         <button class="btn btn-primary btn-lg" id="btn-restart-game">
           🔄 Đua lại từ đầu
         </button>
       </div>
       <div class="game-footer">
-        <span style="font-size: 13px; color: var(--theme-text-subtle);">TeacherStudio</span>
+        <span class="quiz-hint">TeacherStudio • ${acc}% chính xác • ${mm}:${ss}</span>
       </div>
     `;
 

@@ -25,54 +25,55 @@ export class WheelGame extends BaseGame {
   }
 
   renderWheelScreen() {
+    this.spinCount = this.spinCount || 0;
     this.viewportEl.innerHTML = `
-      <div class="game-header">
+      <div class="game-header quiz-head">
         <span class="badge badge-primary">Vòng quay may mắn</span>
-        <span style="font-size: 13px; color: var(--theme-text-subtle);">Còn lại: <strong>${this.optionsList.length}</strong> mục</span>
+        <span class="quiz-score">Còn <strong>${this.optionsList.length}</strong> mục • Đã quay <strong>${this.spinCount}</strong> lượt</span>
       </div>
 
-      <div class="game-body" style="display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; width: 100%;">
-        
-        <div style="position: relative; width: min(340px, 100%); aspect-ratio: 1 / 1;">
+      <div class="game-body wheel-body">
+        <div class="wheel-wrap">
           <!-- Pointer -->
-          <div style="position: absolute; top: -12px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 14px solid transparent; border-right: 14px solid transparent; border-top: 24px solid #B45454; z-index: 10;"></div>
-          
+          <div class="wheel-pointer"></div>
           <!-- Canvas Wheel -->
-          <canvas id="wheel-canvas" width="340" height="340" style="border-radius: 50%; box-shadow: var(--shadow-lg); border: 4px solid var(--theme-surface);"></canvas>
-          
+          <canvas id="wheel-canvas" width="340" height="340" class="wheel-canvas ${this.isSpinning ? 'spinning' : ''}"></canvas>
           <!-- Center Pin -->
-          <button id="btn-spin-center" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 68px; height: 68px; border-radius: 50%; background: var(--theme-primary); color: #FFF; font-weight: 700; font-size: 14px; border: 4px solid #FFF; box-shadow: var(--shadow-md); cursor: pointer; display: flex; align-items: center; justify-content: center;">
-            QUAY
+          <button id="btn-spin-center" class="wheel-center" ${this.isSpinning || !this.optionsList.length ? 'disabled' : ''}>
+            ${this.isSpinning ? '...' : 'QUAY'}
           </button>
         </div>
 
         <!-- Result announcement -->
-        <div id="wheel-result-banner" style="margin-top: 20px; font-size: 20px; font-weight: 700; color: var(--theme-primary); min-height: 32px; text-align: center;"></div>
+        <div id="wheel-result-banner" class="wheel-banner"></div>
 
-        <div style="display: flex; gap: 12px; margin-top: 12px;">
-          <button class="btn btn-primary btn-lg" id="btn-spin-action" ${this.isSpinning ? 'disabled' : ''}>
+        <div class="wheel-actions">
+          <button class="btn btn-primary btn-lg" id="btn-spin-action" ${this.isSpinning || !this.optionsList.length ? 'disabled' : ''}>
             🎯 Quay ngay!
           </button>
           <button class="btn btn-secondary" id="btn-remove-picked" style="display: none;">
             ✕ Bỏ mục này
           </button>
         </div>
+        ${!this.optionsList.length ? '<div class="quiz-hint" style="margin-top:8px;">Hết mục rồi — thêm tên mới hoặc khôi phục danh sách nhé!</div>' : ''}
 
         <!-- Quick add + history -->
-        <div style="display: flex; gap: 8px; margin-top: 16px; max-width: 420px; width: 100%;">
-          <input type="text" class="input" id="inp-add-wheel" placeholder="Thêm tên/mục mới..." style="flex: 1;">
+        <div class="wheel-addrow">
+          <input type="text" class="input" id="inp-add-wheel" placeholder="Thêm tên/mục mới... (Enter để thêm)" maxlength="30" style="flex: 1;">
           <button class="btn btn-secondary" id="btn-add-wheel">+ Thêm</button>
         </div>
         ${this.history.length ? `
-          <div style="margin-top: 12px; font-size: 13px; color: var(--theme-text-subtle); max-width: 420px;">
-            Đã quay trúng: ${this.history.map(h => `<span class="badge" style="margin: 2px;">${escHtml(h)}</span>`).join('')}
+          <div class="wheel-history">
+            <span class="quiz-hint">Đã quay trúng (${this.history.length}):</span>
+            <div>${this.history.map(h => `<span class="badge wheel-hist-badge">${escHtml(h)}</span>`).join('')}</div>
+            <button class="btn btn-secondary btn-sm" id="btn-clear-history" title="Xóa lịch sử">🗑 Xóa lịch sử</button>
           </div>
         ` : ''}
 
       </div>
 
-      <div class="game-footer">
-        <span style="font-size: 13px; color: var(--theme-text-subtle);">Nhấp QUAY hoặc nhấn phím Space</span>
+      <div class="game-footer quiz-foot">
+        <span class="quiz-hint">Nhấp QUAY hoặc nhấn Space • Mỗi lượt quay đều ngẫu nhiên</span>
         <button class="btn btn-secondary btn-sm" id="btn-reset-wheel">Khôi phục danh sách</button>
       </div>
     `;
@@ -108,8 +109,19 @@ export class WheelGame extends BaseGame {
     };
 
     resetBtn.onclick = () => {
+      Sound.playClick();
+      this.spinCount = 0;
       this.start();
     };
+
+    const clearHist = this.viewportEl.querySelector('#btn-clear-history');
+    if (clearHist) {
+      clearHist.onclick = () => {
+        Sound.playClick();
+        this.history = [];
+        this.renderWheelScreen();
+      };
+    }
 
     const addInp = this.viewportEl.querySelector('#inp-add-wheel');
     const addBtn = this.viewportEl.querySelector('#btn-add-wheel');
@@ -253,9 +265,8 @@ export class WheelGame extends BaseGame {
     const normalizedAngle = (1.5 * Math.PI - (this.currentAngle % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
     const index = Math.floor(normalizedAngle / arc) % num;
     this.selectedItem = this.optionsList[index];
-    if (!this.history.includes(this.selectedItem)) {
-      this.history.push(this.selectedItem);
-    }
+    this.spinCount = (this.spinCount || 0) + 1;
+    this.history.push(this.selectedItem);
 
     const banner = this.viewportEl.querySelector('#wheel-result-banner');
     const removeBtn = this.viewportEl.querySelector('#btn-remove-picked');
@@ -267,19 +278,24 @@ export class WheelGame extends BaseGame {
       s.textContent = this.selectedItem ?? '';
       banner.appendChild(t);
       banner.appendChild(s);
+      banner.classList.remove('pop');
+      void banner.offsetWidth;
+      banner.classList.add('pop');
     }
     if (removeBtn) {
       removeBtn.style.display = 'inline-flex';
     }
-    // Cap nhat lich su trung ngay duoi nut quay
+    // Vẽ lại header (lượt quay) + thêm lịch sử inline, không render lại toàn màn hình
+    const headScore = this.viewportEl.querySelector('.quiz-score');
+    if (headScore) headScore.innerHTML = `Còn <strong>${this.optionsList.length}</strong> mục • Đã quay <strong>${this.spinCount}</strong> lượt`;
     let histEl = this.viewportEl.querySelector('#wheel-history');
     if (!histEl) {
       histEl = document.createElement('div');
       histEl.id = 'wheel-history';
-      histEl.style.cssText = 'margin-top: 12px; font-size: 13px; max-width: 420px;';
+      histEl.className = 'wheel-history-live';
       const body = this.viewportEl.querySelector('.game-body');
       if (body) body.appendChild(histEl);
     }
-    histEl.innerHTML = `Đã quay trúng: ${this.history.map(h => `<span class="badge" style="margin: 2px;">${escHtml(h)}</span>`).join('')}`;
+    histEl.innerHTML = `Đã quay trúng (${this.history.length}): ${this.history.slice(-6).map(h => `<span class="badge wheel-hist-badge">${escHtml(h)}</span>`).join('')}${this.history.length > 6 ? ' …' : ''}`;
   }
 }

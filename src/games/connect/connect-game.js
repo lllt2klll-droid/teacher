@@ -35,21 +35,30 @@ export class ConnectGame extends BaseGame {
     this.attempts = 0;
     this.score = 0;
     this._checking = false;
+    this.startAt = Date.now();
     this.state = 'playing';
 
     this.renderBoard();
   }
 
+  elapsed() {
+    return this.startAt ? Math.max(1, Math.round((Date.now() - this.startAt) / 1000)) : 0;
+  }
+
   renderBoard() {
+    const pct = Math.round(this.connected.size / Math.max(1, this.pairs.length) * 100);
     this.viewportEl.innerHTML = `
-      <div class="game-header">
+      <div class="game-header quiz-head">
         <span class="badge badge-primary">Nối ý tương ứng</span>
-        <span style="font-size: 13px; color: var(--theme-text-subtle);">Đã nối: <strong>${this.connected.size} / ${this.pairs.length}</strong></span>
+        <span class="quiz-score">Đã nối: <strong>${this.connected.size}/${this.pairs.length}</strong> • Điểm <strong>${this.score}</strong></span>
       </div>
 
-      <div class="game-body" style="width: 100%; max-width: 680px; margin: 0 auto;">
-        <div style="font-size: 16px; text-align: center; margin-bottom: 20px; color: var(--theme-text-subtle);">
-          Nhấp chọn một mục ở cột trái, rồi nhấp vào mục tương ứng ở cột phải để nối
+      <div class="game-body pair-body">
+        <div class="quiz-progress" title="Tiến trình ${pct}%">
+          <div class="quiz-progress-fill" style="width: ${pct}%;"></div>
+        </div>
+        <div class="pair-hint">
+          ${this.selectedLeft === null ? 'Nhấp chọn một mục ở cột trái, rồi nhấp vào mục tương ứng ở cột phải để nối' : 'Đã chọn trái • hãy chọn mục phải tương ứng →'}
         </div>
 
         <div class="gv-side-2" style="display: flex; justify-content: space-between; gap: 40px; position: relative;">
@@ -81,8 +90,8 @@ export class ConnectGame extends BaseGame {
         </div>
       </div>
 
-      <div class="game-footer">
-        <span style="font-size: 13px; color: var(--theme-text-subtle);">Điểm số: ${this.score}đ • Lượt thử: ${this.attempts}</span>
+      <div class="game-footer quiz-foot">
+        <span class="quiz-hint">Điểm ${this.score}đ • Thử ${this.attempts} • ⏱️ ${this.elapsed()}s</span>
         <button class="btn btn-secondary btn-sm" id="btn-reset-connect">↺ Nối lại từ đầu</button>
       </div>
     `;
@@ -146,5 +155,38 @@ export class ConnectGame extends BaseGame {
         }
       };
     });
+  }
+
+  renderResultScreen() {
+    const total = this.pairs.length || 1;
+    const accuracy = this.attempts ? Math.round(this.connected.size / this.attempts * 100) : 100;
+    const secs = this.elapsed();
+    this.viewportEl.innerHTML = `
+      <div class="game-header">
+        <span class="font-semibold">Nối ý hoàn thành!</span>
+        <span class="badge badge-success">Hoàn thành!</span>
+      </div>
+      <div class="game-body quiz-result-body">
+        <div class="quiz-result-card quiz-enter">
+          <div class="quiz-trophy">${accuracy >= 80 ? '🏆' : '🎉'}</div>
+          <h2 class="quiz-result-title">Nối đúng ${this.connected.size}/${total} cặp</h2>
+          <div class="quiz-stat-row">
+            <span class="quiz-stat">⭐ <strong>${this.score}</strong> điểm</span>
+            <span class="quiz-stat">🎯 Chính xác <strong>${accuracy}%</strong></span>
+            <span class="quiz-stat">⏱️ <strong>${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}</strong></span>
+          </div>
+        </div>
+        <button class="btn btn-primary btn-lg" id="btn-restart-game">🔄 Chơi lại từ đầu</button>
+      </div>
+      <div class="game-footer"><span class="quiz-hint">TeacherStudio • ${accuracy}% chính xác</span></div>
+    `;
+    const rb = this.viewportEl.querySelector('#btn-restart-game');
+    if (rb) rb.onclick = () => this.restart();
+  }
+
+  restart() {
+    this.score = 0;
+    this.currentQuestionIndex = 0;
+    this.start();
   }
 }

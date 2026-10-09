@@ -4,6 +4,7 @@
 
 import { Icons } from './icons.js';
 import { GameRegistry } from '../core/game-registry.js';
+import { ExportEngine } from '../core/export-engine.js';
 import { THEMES } from '../themes/theme-definitions.js';
 
 export const Dialogs = {
@@ -272,63 +273,110 @@ export const Dialogs = {
       <div style="border: 1px solid var(--color-border); border-radius: 10px; padding: 14px 16px; margin-bottom: 12px;">
         <div class="font-semibold" style="font-size: 14px; margin-bottom: 8px;">3 bước đưa game vào Canva (bắt buộc qua link https):</div>
         <ol style="font-size: 13px; line-height: 1.7; padding-left: 20px; margin: 0;">
-          <li>Mở <strong>Netlify Drop</strong> (app.netlify.com/drop) hoặc <strong>itch.io</strong> → kéo file <strong>${filename}</strong> vào → nhận link https công khai.</li>
-          <li>Trong Canva: <strong>… Thêm → &lt;&gt; Embeds → dán link</strong> → game hiện trực tiếp trong thiết kế.</li>
-          <li>Tạo QR cho link để học sinh quét bằng máy tính bảng (dùng trang qr-code-generator hoặc api.qrserver.com).</li>
+          <li>Mở <strong>Netlify Drop</strong> (app.netlify.com/drop) → kéo file <strong>${filename}</strong> vào → nhận link https công khai.</li>
+          <li>Trong Canva: <strong>Ứng dụng → Embeds → dán link</strong> → game hiện trực tiếp trong thiết kế. Nếu bị chặn toàn màn hình, HS bấm nút <strong>↗ Mở tab mới</strong> trong game.</li>
+          <li>Dán link vào ô bên dưới để lấy mã nhúng & QR cho HS quét:</li>
         </ol>
         <div class="form-group" style="margin-top: 12px;">
-          <label class="form-label">Dán link https của game vào đây để lấy mã nhúng & QR:</label>
+          <label class="form-label">Link https của game sau khi đăng:</label>
           <div style="display: flex; gap: 8px;">
             <input type="url" class="input" id="inp-public-url" placeholder="https://ten-game.netlify.app/..." style="flex: 1;">
             <button class="btn btn-secondary btn-sm" id="btn-make-embed">Tạo mã</button>
+          </div>
+          <div style="display: flex; gap: 8px; margin-top: 8px; align-items: center;">
+            <label style="font-size: 12px;">Rộng <input id="inp-embed-w" type="number" value="1280" min="320" max="2560" style="width: 76px; padding: 4px 6px; border: 1px solid var(--color-border); border-radius: 6px;"></label>
+            <label style="font-size: 12px;">Cao <input id="inp-embed-h" type="number" value="720" min="240" max="1440" style="width: 72px; padding: 4px 6px; border: 1px solid var(--color-border); border-radius: 6px;"></label>
           </div>
         </div>
         <div id="embed-result" style="display: none; margin-top: 12px;">
           <label class="form-label">Mã iframe (dán vào website / LMS):</label>
           <pre id="embed-code" style="padding: 10px; background: var(--color-surface-subtle); border-radius: 8px; font-size: 11px; overflow-x: auto; white-space: pre-wrap; word-break: break-all;"></pre>
           <div style="display: flex; gap: 8px; margin-top: 8px; align-items: center; flex-wrap: wrap;">
-            <button class="btn btn-secondary btn-sm" id="btn-copy-embed">📋 Sao chép mã</button>
-            <a class="btn btn-secondary btn-sm" id="link-qr" target="_blank" rel="noopener">🔳 Mở QR code</a>
+            <button class="btn btn-primary btn-sm" id="btn-copy-embed">📋 Sao chép mã nhúng</button>
+            <button class="btn btn-secondary btn-sm" id="btn-copy-link">🔗 Sao chép link</button>
+            <a class="btn btn-secondary btn-sm" id="btn-open-link" target="_blank" rel="noopener">↗ Mở thử game</a>
+          </div>
+          <div style="display: flex; gap: 12px; margin-top: 12px; align-items: flex-start; flex-wrap: wrap;">
+            <img id="img-qr" alt="QR game cho học sinh quét" style="width: 140px; height: 140px; border: 1px solid var(--color-border); border-radius: 8px; background: #fff;">
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <span style="font-size: 12px; color: var(--color-text-secondary);">QR cho HS quét bằng máy tính bảng. Tải PNG để dán vào slide Canva / in phiếu.</span>
+              <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <button class="btn btn-secondary btn-sm" id="btn-dl-qr">⬇ Tải QR PNG</button>
+                <a class="btn btn-secondary btn-sm" id="link-qr" target="_blank" rel="noopener">🔳 Mở QR lớn</a>
+              </div>
+              <span id="qr-status" style="font-size: 12px;"></span>
+            </div>
           </div>
         </div>
       </div>
       ` : `
       <div style="font-size: 13px; color: var(--color-text-secondary); border: 1px solid var(--color-border); border-radius: 10px; padding: 12px 16px;">
-        💻 Mở file bằng Chrome / Cốc Cốc / Edge, nhấn F11 để full màn hình máy chiếu. Copy vào USB là dạy được, không cần mạng.
+        💻 Mở file bằng Chrome / Cốc Cốc / Edge, bấm nút <strong>⛶ Toàn màn hình</strong> (phím F) để chiếu máy chiếu. Copy vào USB là dạy được, không cần mạng.
         Muốn nhúng vào Canva thì xuất lại và chọn kiểu <strong>🖼️ Nhúng vào Canva</strong>.
       </div>
       `}
     `;
     const footerHtml = `<button class="btn btn-primary btn-cancel">Xong</button>`;
-    const modal = this.createModal({ title: 'Xuất file thành công', contentHtml, footerHtml, maxWidth: '620px' });
+    const modal = this.createModal({ title: 'Xuất file thành công', contentHtml, footerHtml, maxWidth: '640px' });
     modal.content.querySelector('.btn-cancel').onclick = () => modal.close();
 
     const urlInp = modal.content.querySelector('#inp-public-url');
     const mkBtn = modal.content.querySelector('#btn-make-embed');
     if (mkBtn && urlInp) {
-      mkBtn.onclick = () => {
+      const renderEmbed = () => {
         const url = (urlInp.value || '').trim();
         if (!url.startsWith('https://')) {
           urlInp.style.borderColor = '#B45454';
           urlInp.focus();
           return;
         }
-        const code = `<iframe src="${url}" width="1280" height="720" frameborder="0" allowfullscreen allow="autoplay; fullscreen"></iframe>`;
+        urlInp.style.borderColor = '';
+        const wEl = modal.content.querySelector('#inp-embed-w');
+        const hEl = modal.content.querySelector('#inp-embed-h');
+        const code = ExportEngine.getEmbedCode(url, wEl ? wEl.value : 1280, hEl ? hEl.value : 720);
         const box = modal.content.querySelector('#embed-result');
         const pre = modal.content.querySelector('#embed-code');
         const qr = modal.content.querySelector('#link-qr');
+        const img = modal.content.querySelector('#img-qr');
+        const openLink = modal.content.querySelector('#btn-open-link');
+        const qrUrl = ExportEngine.buildQrUrl(url, 300);
         if (box && pre) { box.style.display = 'block'; pre.textContent = code; }
-        if (qr) qr.href = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' + encodeURIComponent(url);
-        const cp = modal.content.querySelector('#btn-copy-embed');
-        if (cp) cp.onclick = async () => {
-          try { await navigator.clipboard.writeText(code); cp.textContent = '✓ Đã sao chép!'; }
-          catch (e) {
-            const ta = document.createElement('textarea');
-            ta.value = code; document.body.appendChild(ta); ta.select();
-            document.execCommand('copy'); document.body.removeChild(ta);
-            cp.textContent = '✓ Đã sao chép!';
-          }
-        };
+        if (qr) qr.href = qrUrl;
+        if (img) img.src = qrUrl;
+        if (openLink) openLink.href = url;
+      };
+      mkBtn.onclick = renderEmbed;
+      urlInp.onkeydown = (e) => { if (e.key === 'Enter') renderEmbed(); };
+
+      const setBtnDone = (btn, okText = '✓ Đã sao chép!') => {
+        if (!btn) return;
+        const old = btn.textContent;
+        btn.textContent = okText;
+        setTimeout(() => { btn.textContent = old; }, 1800);
+      };
+      const cp = modal.content.querySelector('#btn-copy-embed');
+      if (cp) cp.onclick = async () => {
+        const code = modal.content.querySelector('#embed-code')?.textContent || '';
+        try { await ExportEngine.copyText(code); setBtnDone(cp); }
+        catch (e) { cp.textContent = 'Không sao chép được'; }
+      };
+      const cpLink = modal.content.querySelector('#btn-copy-link');
+      if (cpLink) cpLink.onclick = async () => {
+        try { await ExportEngine.copyText((urlInp.value || '').trim()); setBtnDone(cpLink); }
+        catch (e) { cpLink.textContent = 'Không sao chép được'; }
+      };
+      const dlQr = modal.content.querySelector('#btn-dl-qr');
+      if (dlQr) dlQr.onclick = async () => {
+        const status = modal.content.querySelector('#qr-status');
+        const url = (urlInp.value || '').trim();
+        try {
+          if (status) status.textContent = 'Đang tải QR...';
+          await ExportEngine.downloadQrPng(url, 'QR-Game-Canva.png', 600);
+          if (status) status.textContent = '✓ Đã tải QR PNG!';
+          setBtnDone(dlQr, '✓ Đã tải!');
+        } catch (e) {
+          if (status) status.textContent = 'Không tải được, cô bấm "Mở QR lớn" rồi lưu ảnh.';
+        }
       };
     }
     return modal;

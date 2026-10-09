@@ -18,6 +18,7 @@ export class FlashcardGame extends BaseGame {
     this.currentCardIndex = 0;
     this.isFlipped = false;
     this.masteredSet = new Set();
+    this.startAt = Date.now();
     this.state = 'playing';
     // Phim Space lat the, mui ten chuyen the (tu don khi destroy nho BaseGame)
     this.bindKey((e) => {
@@ -47,15 +48,25 @@ export class FlashcardGame extends BaseGame {
     const total = this.cards.length;
     const currentNum = this.currentCardIndex + 1;
     this.isFlipped = false;
+    if (this.startAt == null) this.startAt = Date.now();
+    const pct = Math.round(this.masteredSet.size / Math.max(1, total) * 100);
 
     this.viewportEl.innerHTML = `
-      <div class="game-header">
+      <div class="game-header quiz-head">
         <span class="badge badge-primary">Thẻ ${currentNum} / ${total}</span>
-        <span style="font-size: 13px; color: var(--theme-text-subtle);">Đã ghi nhớ: <strong style="color: var(--theme-primary);">${this.masteredSet.size}</strong>/${this.cards.length} thẻ</span>
+        <span class="quiz-score">Đã nhớ: <strong style="color: var(--theme-primary);">${this.masteredSet.size}</strong>/${total} • Điểm <strong>${this.score}</strong></span>
       </div>
 
-      <div class="game-body" style="max-width: 500px; margin: 0 auto; width: 100%; text-align: center;">
-        <div id="flashcard-container" style="perspective: 1000px; width: 100%; height: 260px; cursor: pointer; user-select: none;">
+      <div class="game-body fc-body">
+        <div class="quiz-progress" title="Tiến trình ghi nhớ ${pct}%">
+          <div class="quiz-progress-fill" style="width: ${pct}%;"></div>
+        </div>
+        <div class="fc-dots" title="Vị trí thẻ">
+          ${this.cards.map((c, i) => `<span class="fc-dot ${i === this.currentCardIndex ? 'cur' : ''} ${this.masteredSet.has(c.id) ? 'done' : ''}"></span>`).join('')}
+        </div>
+
+      <div class="fc-wrap">
+        <div id="flashcard-container" class="fc-container">
           <div id="flashcard-inner" style="position: relative; width: 100%; height: 100%; text-align: center; transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1); transform-style: preserve-3d; box-shadow: var(--shadow-md); border-radius: 16px; border: 2px solid var(--theme-border);">
             
             <!-- Front -->
@@ -84,9 +95,14 @@ export class FlashcardGame extends BaseGame {
           ${this.options.readAloud !== false ? `<button class="btn btn-secondary btn-sm btn-speak" data-speak="${escHtml(card.front + '. ' + card.back)}" title="Đọc to thẻ này">🔊 Đọc</button>` : ''}
         </div>
       </div>
+      </div>
 
-      <div class="game-footer">
-        <button class="btn btn-success btn-sm" id="btn-mastered">✓ Đã nhớ thẻ này (+10đ)</button>
+      <div class="game-footer quiz-foot">
+        <span class="quiz-hint">Space lật • ←/→ chuyển thẻ</span>
+        <div class="flex items-center gap-2">
+          <button class="btn btn-secondary btn-sm" id="btn-unknown" title="Để lại thẻ này học sau">📖 Chưa nhớ</button>
+          <button class="btn btn-success" id="btn-mastered">✓ Đã nhớ (+10đ)</button>
+        </div>
       </div>
     `;
 
@@ -148,5 +164,60 @@ export class FlashcardGame extends BaseGame {
         this.renderCard();
       };
     }
+
+    const unknownBtn = this.viewportEl.querySelector('#btn-unknown');
+    if (unknownBtn) {
+      unknownBtn.onclick = () => {
+        Sound.playClick();
+        if (this.currentCardIndex < this.cards.length - 1) {
+          this.currentCardIndex++;
+          this.renderCard();
+        } else {
+          this.finish();
+        }
+      };
+    }
+  }
+
+  renderResultScreen() {
+    this.unbindKey();
+    const total = this.cards.length || 1;
+    const done = this.masteredSet.size;
+    const acc = Math.round(done / total * 100);
+    const secs = this.startAt ? Math.max(1, Math.round((Date.now() - this.startAt) / 1000)) : 0;
+    const rest = this.cards.filter(c => !this.masteredSet.has(c.id));
+    this.viewportEl.innerHTML = `
+      <div class="game-header">
+        <span class="font-semibold">${escHtml(this.project.name || 'Kết quả')}</span>
+        <span class="badge badge-success">Hoàn thành!</span>
+      </div>
+      <div class="game-body quiz-result-body">
+        <div class="quiz-result-card quiz-enter">
+          <div class="quiz-trophy">${acc >= 80 ? '🏆' : acc >= 50 ? '🎉' : '📖'}</div>
+          <h2 class="quiz-result-title">Đã nhớ ${done}/${total} thẻ (${acc}%)</h2>
+          <div class="quiz-stat-row">
+            <span class="quiz-stat">⭐ <strong>${this.score}</strong> điểm</span>
+            <span class="quiz-stat">⏱️ <strong>${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}</strong></span>
+            <span class="quiz-stat">📖 Còn <strong>${rest.length}</strong> thẻ</span>
+          </div>
+          ${rest.length ? `<div class="quiz-hint" style="margin-bottom:8px;">Chưa nhớ: ${rest.slice(0, 5).map(c => escHtml(c.front)).join(' • ')}${rest.length > 5 ? ` (+${rest.length - 5})` : ''}</div>` : '<div class="quiz-grade" style="color:#15803D;">Tuyệt vời, nhớ hết bộ thẻ! 🎉</div>'}
+        </div>
+        <div class="flex items-center gap-2">
+          <button class="btn btn-primary btn-lg" id="btn-restart-game">🔄 Học lại từ đầu</button>
+          ${rest.length ? '<button class="btn btn-secondary" id="btn-retry-rest">📖 Chỉ học thẻ chưa nhớ</button>' : ''}
+        </div>
+      </div>
+      <div class="game-footer"><span class="quiz-hint">TeacherStudio • ${done}/${total} thẻ đã nhớ</span></div>
+    `;
+    const rb = this.viewportEl.querySelector('#btn-restart-game');
+    if (rb) rb.onclick = () => { this.masteredSet = new Set(); this.score = 0; this.currentCardIndex = 0; this.startAt = Date.now(); this.start(); };
+    const rr = this.viewportEl.querySelector('#btn-retry-rest');
+    if (rr) rr.onclick = () => {
+      const ids = new Set(rest.map(c => c.id));
+      this.cards = this.cards.filter(c => ids.has(c.id));
+      this.masteredSet = new Set();
+      this.score = 0; this.currentCardIndex = 0; this.startAt = Date.now();
+      this.state = 'playing'; this.renderCard();
+    };
   }
 }

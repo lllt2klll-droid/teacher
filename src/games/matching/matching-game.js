@@ -42,20 +42,29 @@ export class MatchingGame extends BaseGame {
     this.mistakes = 0;
     this.score = 0;
     this._checking = false;
+    this.startAt = Date.now();
     this.state = 'playing';
 
     this.renderBoard();
   }
 
+  elapsed() {
+    return this.startAt ? Math.max(1, Math.round((Date.now() - this.startAt) / 1000)) : 0;
+  }
+
   renderBoard() {
+    const pct = Math.round(this.matchedIds.size / Math.max(1, this.pairs.length) * 100);
     this.viewportEl.innerHTML = `
-      <div class="game-header">
+      <div class="game-header quiz-head">
         <span class="badge badge-primary">Ghép đôi tương ứng</span>
-        <span style="font-size: 13px; color: var(--theme-text-subtle);">Đã ghép: <strong>${this.matchedIds.size} / ${this.pairs.length}</strong></span>
+        <span class="quiz-score">Đã ghép: <strong>${this.matchedIds.size}/${this.pairs.length}</strong> • Điểm <strong>${this.score}</strong> • Sai <strong>${this.mistakes}</strong></span>
       </div>
 
-      <div class="game-body" style="max-width: 760px; margin: 0 auto; width: 100%;">
-        <div style="font-size: 16px; text-align: center; margin-bottom: 20px; color: var(--theme-text-subtle);">
+      <div class="game-body pair-body">
+        <div class="quiz-progress" title="Tiến trình ${pct}%">
+          <div class="quiz-progress-fill" style="width: ${pct}%;"></div>
+        </div>
+        <div class="pair-hint">
           Nhấp chọn một mục ở Cột A, sau đó chọn mục tương ứng ở Cột B
         </div>
 
@@ -90,8 +99,8 @@ export class MatchingGame extends BaseGame {
         </div>
       </div>
 
-      <div class="game-footer">
-        <span style="font-size: 13px; color: var(--theme-text-subtle);">Điểm: ${this.score}đ • Lượt thử: ${this.attempts} • Sai: ${this.mistakes}</span>
+      <div class="game-footer quiz-foot">
+        <span class="quiz-hint">Điểm ${this.score}đ • Thử ${this.attempts} • Sai ${this.mistakes} • ⏱️ ${this.elapsed()}s</span>
         <button class="btn btn-secondary btn-sm" id="btn-reshuffle-match">🎲 Xáo lại</button>
       </div>
     `;
@@ -171,5 +180,41 @@ export class MatchingGame extends BaseGame {
         this.renderBoard();
       }, 700);
     }
+  }
+
+  renderResultScreen() {
+    const total = this.pairs.length || 1;
+    const acc = Math.round((total - this.mistakes / Math.max(1, this.attempts) * total / 1) || 0);
+    const secs = this.elapsed();
+    const accuracy = this.attempts ? Math.round(this.matchedIds.size / this.attempts * 100) : 100;
+    this.viewportEl.innerHTML = `
+      <div class="game-header">
+        <span class="font-semibold">Ghép đôi hoàn thành!</span>
+        <span class="badge badge-success">Hoàn thành!</span>
+      </div>
+      <div class="game-body quiz-result-body">
+        <div class="quiz-result-card quiz-enter">
+          <div class="quiz-trophy">${this.mistakes === 0 ? '🏆' : this.mistakes <= 2 ? '🎉' : '💪'}</div>
+          <h2 class="quiz-result-title">Ghép đúng ${this.matchedIds.size}/${total} cặp</h2>
+          <div class="quiz-stat-row">
+            <span class="quiz-stat">⭐ <strong>${this.score}</strong> điểm</span>
+            <span class="quiz-stat">🎯 Chính xác <strong>${accuracy}%</strong></span>
+            <span class="quiz-stat">❌ Sai <strong>${this.mistakes}</strong></span>
+            <span class="quiz-stat">⏱️ <strong>${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}</strong></span>
+          </div>
+          <div class="quiz-hint">${this.mistakes === 0 ? 'Hoàn hảo, không sai lần nào! 🏆' : 'Thử ' + this.attempts + ' lượt • Càng ít sai càng giỏi!'}</div>
+        </div>
+        <button class="btn btn-primary btn-lg" id="btn-restart-game">🔄 Chơi lại từ đầu</button>
+      </div>
+      <div class="game-footer"><span class="quiz-hint">TeacherStudio • ${this.score} điểm • ${accuracy}% chính xác</span></div>
+    `;
+    const rb = this.viewportEl.querySelector('#btn-restart-game');
+    if (rb) rb.onclick = () => this.restart();
+  }
+
+  restart() {
+    this.score = 0;
+    this.currentQuestionIndex = 0;
+    this.start();
   }
 }

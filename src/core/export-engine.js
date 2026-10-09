@@ -22,12 +22,51 @@ export const ExportEngine = {
     const safe = String(publicUrl || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     const w = Math.min(2560, Math.max(320, parseInt(width, 10) || 1280));
     const h = Math.min(1440, Math.max(240, parseInt(height, 10) || 720));
-    return `<iframe src="${safe}" width="${w}" height="${h}" frameborder="0" allowfullscreen allow="autoplay; fullscreen"></iframe>`;
+    return `<iframe src="${safe}" width="${w}" height="${h}" style="max-width:100%;border:0;border-radius:12px;" loading="lazy" title="Tro choi tuong tac TeacherStudio" frameborder="0" allowfullscreen allow="autoplay; fullscreen; clipboard-write"></iframe>`;
   },
 
   /** URL tạo QR miễn phí (dùng api.qrserver.com, chỉ cần mở link này sau khi có link game) */
   buildQrUrl(publicUrl, size = 220) {
-    return 'https://api.qrserver.com/v1/create-qr-code/?size=' + size + 'x' + size + '&data=' + encodeURIComponent(publicUrl || '');
+    const s = Math.min(1000, Math.max(120, parseInt(size, 10) || 220));
+    return 'https://api.qrserver.com/v1/create-qr-code/?size=' + s + 'x' + s + '&margin=8&data=' + encodeURIComponent(publicUrl || '');
+  },
+
+  /** Tải ảnh QR PNG về máy để dán vào slide Canva / in phiếu cho HS quét */
+  async downloadQrPng(publicUrl, filename = 'QR-Game.png', size = 600) {
+    const qrUrl = this.buildQrUrl(publicUrl, size);
+    const res = await fetch(qrUrl);
+    if (!res.ok) throw new Error('Không tải được ảnh QR');
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    return true;
+  },
+
+  /** Sao chép văn bản vào clipboard, có fallback cho trình duyệt cũ */
+  async copyText(text) {
+    const value = String(text || '');
+    try {
+      await navigator.clipboard.writeText(value);
+      return true;
+    } catch (e) {
+      const ta = document.createElement('textarea');
+      ta.value = value;
+      ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0;';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      let ok = false;
+      try { ok = document.execCommand('copy'); } catch (err) { ok = false; }
+      document.body.removeChild(ta);
+      if (!ok) throw e;
+      return true;
+    }
   },
 
   generateStandaloneHtml(project, content, profile = 'standalone') {
@@ -242,6 +281,8 @@ export const ExportEngine = {
     }
     if (PROFILE === 'canva') {
       window.addEventListener('load', function () { notifyParent(); setTimeout(notifyParent, 500); });
+      // Tự báo chiều cao định kỳ để khung Embed trong Canva không bị scroll 2 lớp
+      setInterval(notifyParent, 1200);
     }
 
     function pairsFromContent(max) {
@@ -324,19 +365,28 @@ export const ExportEngine = {
         if (PROFILE === 'canva') notifyParent();
       }
 
-      /* ---- QUIZ ---- */
+      /* ---- QUIZ (khung + streak + thuong toc do + tron dap an) ---- */
       function runQuiz() {
         var picks = [];
+        var streak = 0, best = 0, okCount = 0;
+        var doShuffleA = project.settings && project.settings.shuffleAnswers;
+        var doSpeed = !(project.settings && project.settings.speedBonus === false);
+        var doStreak = !(project.settings && project.settings.streakBonus === false);
+        if (project.settings && project.settings.shuffleQuestions) { questions = shuffle(questions); }
         function finishQuiz() {
           document.onkeydown = null;
           Sound.playCheer();
           var ok = picks.filter(function (p) { return p.ok; }).length;
           var total = questions.length || 1;
+          var acc = Math.round(ok / total * 100);
+          var grade = acc >= 90 ? 'Xuat sac! 🏆' : acc >= 75 ? 'Gioi! 🎉' : acc >= 50 ? 'Kha! 💪' : 'Co gang them nhe! 🌱';
           root.innerHTML = header(project.name || 'Ket qua', '<span class="badge badge-success">Hoan thanh!</span>') +
             '<div class="game-body" style="max-width:640px;margin:0 auto;width:100%;">' +
-            '<div class="text-center" style="margin-bottom:16px;"><div style="font-size:48px;">🎉</div>' +
-            '<h2 style="font-size:24px;">Dung ' + ok + '/' + total + ' cau</h2>' +
-            '<p>Tong diem: <strong style="font-size:24px;color:var(--theme-primary);">' + score + '</strong> diem</p></div>' +
+            '<div class="text-center" style="margin-bottom:16px;"><div style="font-size:48px;">' + (acc >= 75 ? '🏆' : '🎉') + '</div>' +
+            '<h2 style="font-size:24px;">Dung ' + ok + '/' + total + ' cau (' + acc + '%)</h2>' +
+            '<div style="font-weight:700;margin:4px 0 8px;">' + grade + '</div>' +
+            '<p>Tong diem: <strong style="font-size:24px;color:var(--theme-primary);">' + score + '</strong> diem' +
+            '<br><span style="font-size:13px;">🔥 Chuoi hay nhat x' + best + '</span></p></div>' +
             '<div style="width:100%;max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">' +
             picks.map(function (p, i) {
               return '<div style="padding:10px 14px;border:1px solid var(--theme-border);border-radius:8px;background:var(--theme-surface);font-size:14px;text-align:left;">' +
@@ -345,25 +395,32 @@ export const ExportEngine = {
             }).join('') + '</div>' +
             '<div class="text-center"><button class="btn btn-primary btn-lg" id="btn-restart">🔄 Choi lai tu dau</button></div></div>' +
             footer();
-          document.getElementById('btn-restart').onclick = function () { score = 0; qIndex = 0; picks = []; boot(); };
+          document.getElementById('btn-restart').onclick = function () { score = 0; qIndex = 0; picks = []; streak = 0; best = 0; okCount = 0; boot(); };
           if (PROFILE === 'canva') notifyParent();
         }
         function showQ() {
           var q = questions[qIndex];
           if (!q) { finishQuiz(); return; }
+          var order = (q.answers || []).map(function (_, i) { return i; });
+          if (doShuffleA && order.length > 1) { order = shuffle(order); }
+          var t0 = Date.now();
+          var tTotal = 30;
           root.innerHTML = header('Quiz - Cau ' + (qIndex + 1) + ' / ' + questions.length,
-            '<span>Diem: <strong>' + score + '</strong></span>') +
+            '<span>Diem: <strong>' + score + '</strong>' + (streak >= 2 ? ' • 🔥x' + streak : '') + ' • Dung ' + okCount + '/' + questions.length + '</span>') +
             '<div class="game-body" style="max-width:680px;width:100%;margin:0 auto;">' +
-            '<div style="width:100%;height:6px;background:rgba(0,0,0,.08);border-radius:3px;margin-bottom:16px;">' +
-            '<div style="height:100%;width:' + Math.round(qIndex / questions.length * 100) + '%;background:var(--theme-primary);border-radius:3px;"></div></div>' +
+            '<div style="width:100%;height:8px;background:rgba(0,0,0,.08);border-radius:9999px;margin-bottom:16px;overflow:hidden;">' +
+            '<div style="height:100%;width:' + Math.round(qIndex / questions.length * 100) + '%;background:linear-gradient(90deg,var(--theme-primary),var(--theme-accent,var(--theme-primary)));border-radius:9999px;"></div></div>' +
+            '<div style="width:100%;background:var(--theme-surface);border:2px solid var(--theme-border);border-radius:16px;padding:20px;">' +
             qImg(q) + gvBadge(q) +
             '<div style="display:flex;gap:8px;align-items:flex-start;"><div class="game-q-text" style="flex:1;">' + esc(q.question) + '</div>' + speakBtn(q.question) + '</div><div style="width:100%;">' +
-            (q.answers || []).map(function (a, i) {
-              return '<button class="game-option-btn" data-i="' + i + '"><span class="game-option-letter">' +
-                String.fromCharCode(65 + i) + '</span><span>' + esc(a) + '</span></button>';
+            order.map(function (ri, pos) {
+              return '<button class="game-option-btn" data-i="' + ri + '"><span class="game-option-letter">' +
+                String.fromCharCode(65 + pos) + '</span><span>' + esc((q.answers || [])[ri]) + '</span></button>';
             }).join('') + '</div>' +
-            (q.explanation ? '<div id="exp" style="display:none;margin-top:12px;font-size:14px;text-align:left;">' +
-              '<strong>Giai thich:</strong> ' + esc(q.explanation) + '</div>' : '') + '</div>' +
+            (q.explanation ? '<div id="exp" style="display:none;margin-top:12px;font-size:14px;text-align:left;border-left:4px solid var(--theme-primary);padding-left:10px;">' +
+              '<strong>Giai thich:</strong> ' + esc(q.explanation) + '</div>' : '') +
+            '<div id="bonus" style="min-height:20px;text-align:center;font-weight:700;font-size:14px;margin-top:8px;"></div>' +
+            '</div></div>' +
             footer('Bam chuot / cham de chon - Phim 1-4');
           var btns = root.querySelectorAll('.game-option-btn');
           var answered = false;
@@ -373,50 +430,93 @@ export const ExportEngine = {
             var ok = idx === q.correctAnswer;
             picks.push({ question: q.question, picked: idx >= 0 ? (q.answers || [])[idx] : 'Het gio', right: (q.answers || [])[q.correctAnswer], ok: ok });
             for (var k = 0; k < btns.length; k++) {
+              var ri = parseInt(btns[k].getAttribute('data-i'), 10);
               btns[k].disabled = true;
-              if (k === q.correctAnswer) btns[k].classList.add('correct');
-              else if (k === idx) btns[k].classList.add('incorrect');
+              if (ri === q.correctAnswer) btns[k].classList.add('correct');
+              else if (ri === idx) btns[k].classList.add('incorrect');
+              else btns[k].style.opacity = '.55';
             }
-            if (ok) { Sound.playCorrect(); score += (q.points || 10); }
-            else Sound.playWrong();
+            var gain = 0, note = '';
+            if (ok) {
+              Sound.playCorrect(); okCount++; streak++; if (streak > best) best = streak;
+              gain = (q.points || 10);
+              if (doSpeed) { var el = (Date.now() - t0) / 1000; if (el < tTotal * 0.5) { var ex = Math.max(1, Math.round(gain * 0.3)); gain += ex; note += '⚡Nhanh +' + ex + ' • '; } }
+              if (doStreak && streak % 3 === 0) { gain += 5; note += '🔥Chuoi ' + streak + ' +5 • '; }
+              score += gain; note += '+' + gain + 'd';
+            }
+            else { Sound.playWrong(); streak = 0; note = idx < 0 ? 'Het gio!' : 'Chua dung, co len!'; }
+            var bn = document.getElementById('bonus');
+            if (bn) { bn.textContent = note; bn.style.color = ok ? '#15803D' : '#B45454'; }
             var e = document.getElementById('exp'); if (e && q.explanation) e.style.display = 'block';
             setTimeout(function () { qIndex++; showQ(); }, 1400);
           }
           for (var b = 0; b < btns.length; b++) {
-            (function (i) { btns[i].onclick = function () { answer(i); }; })(b);
+            (function (el) { el.onclick = function () { answer(parseInt(el.getAttribute('data-i'), 10)); }; })(btns[b]);
           }
           document.onkeydown = function (e) {
-            var n = parseInt(e.key, 10); if (n >= 1 && n <= btns.length) answer(n - 1); };
+            var n = parseInt(e.key, 10); if (n >= 1 && n <= btns.length) { var el = btns[n - 1]; answer(parseInt(el.getAttribute('data-i'), 10)); } };
           if (PROFILE === 'canva') notifyParent();
         }
         showQ();
       }
 
-      /* ---- TRUE/FALSE ---- */
+      /* ---- TRUE/FALSE (khung + streak + thuong + giai thich) ---- */
       function runTrueFalse() {
-        var streak = 0;
+        var streak = 0, best = 0, okCount = 0;
+        var t0 = Date.now();
+        var doSpeed = !(project.settings && project.settings.speedBonus === false);
+        var doStreak = !(project.settings && project.settings.streakBonus === false);
         function showQ() {
+          pick.locked = false;
           var q = questions[qIndex];
-          if (!q) { document.onkeydown = null; finishScreen(); return; }
+          if (!q) {
+            document.onkeydown = null;
+            var total = questions.length || 1;
+            var acc = Math.round(okCount / total * 100);
+            finishScreen('Dung ' + okCount + '/' + total + ' (' + acc + '%)', '⭐ ' + score + ' diem • 🔥 Chuoi x' + best + ' • Giai thich day du trong bai');
+            return;
+          }
+          t0 = Date.now();
           root.innerHTML = header('Menh de ' + (qIndex + 1) + ' / ' + questions.length,
-            '<span>Diem: <strong>' + score + '</strong>' + (streak >= 2 ? ' • Chuoi ' + streak : '') + '</span>') +
+            '<span>Diem: <strong>' + score + '</strong>' + (streak >= 2 ? ' • 🔥 Chuoi ' + streak : '') + ' • Dung ' + okCount + '/' + questions.length + '</span>') +
             '<div class="game-body text-center" style="max-width:600px;margin:0 auto;width:100%;">' +
+            '<div style="width:100%;height:8px;background:rgba(0,0,0,.08);border-radius:9999px;margin-bottom:14px;overflow:hidden;">' +
+            '<div style="height:100%;width:' + Math.round(qIndex / questions.length * 100) + '%;background:linear-gradient(90deg,var(--theme-primary),var(--theme-accent,var(--theme-primary)));"></div></div>' +
+            '<div style="width:100%;background:var(--theme-surface);border:2px solid var(--theme-border);border-radius:16px;padding:20px;">' +
+            '<div style="font-size:36px;color:var(--theme-primary);opacity:.25;line-height:1;">❝</div>' +
             qImg(q) + gvBadge(q) +
             '<div style="display:flex;gap:8px;align-items:flex-start;"><div class="game-q-text" style="flex:1;">“' + esc(q.question) + '”</div>' + speakBtn(q.question) + '</div>' +
             '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;width:100%;">' +
-            '<button class="tf-btn" id="bT" style="border:3px solid #4D7A5A;color:#2D5838;background:rgba(77,122,90,.1);">✓ DUNG<div style="font-size:12px;font-weight:400;">(Phim 1 / ←)</div></button>' +
-            '<button class="tf-btn" id="bF" style="border:3px solid #B45454;color:#872828;background:rgba(180,84,84,.1);">✗ SAI<div style="font-size:12px;font-weight:400;">(Phim 2 / →)</div></button>' +
-            '</div></div>' + footer('Bam truc tiep hoac phim mui ten');
+            '<button class="tf-btn" id="bT" style="border:3px solid #4D7A5A;color:#2D5838;background:rgba(77,122,90,.1);padding:26px 14px;border-radius:16px;font-weight:800;font-size:22px;">✓ DUNG<div style="font-size:12px;font-weight:400;">(Phim 1 / ←)</div></button>' +
+            '<button class="tf-btn" id="bF" style="border:3px solid #B45454;color:#872828;background:rgba(180,84,84,.1);padding:26px 14px;border-radius:16px;font-weight:800;font-size:22px;">✗ SAI<div style="font-size:12px;font-weight:400;">(Phim 2 / →)</div></button>' +
+            '</div><div id="tfBonus" style="min-height:20px;font-weight:700;font-size:14px;margin-top:8px;"></div></div></div>' + footer('Bam truc tiep hoac phim mui ten • Nhanh +30%, chuoi 3 +5');
           function pick(c) {
             if (pick.locked) return; pick.locked = true;
             document.onkeydown = null;
             var ok = c === (q.correctAnswer || 0);
             document.getElementById('bT').disabled = true; document.getElementById('bF').disabled = true;
-            if (ok) { Sound.playCorrect(); score += (q.points || 10); streak++; }
-            else { Sound.playWrong(); streak = 0; }
+            var gain = 0, note = '';
+            if (ok) {
+              Sound.playCorrect(); okCount++; streak++; if (streak > best) best = streak;
+              gain = (q.points || 10);
+              if (doSpeed) { var el = (Date.now() - t0) / 1000; if (el < 15) { var ex = Math.max(1, Math.round(gain * 0.3)); gain += ex; note += '⚡Nhanh +' + ex + ' • '; } }
+              if (doStreak && streak % 3 === 0) { gain += 5; note += '🔥Chuoi ' + streak + ' +5 • '; }
+              score += gain; note += '+' + gain + 'd';
+              var wb = document.getElementById(c === 0 ? 'bT' : 'bF');
+              if (wb) wb.style.background = '#4D7A5A';
+            }
+            else {
+              Sound.playWrong(); streak = 0; note = 'Chua dung, co len!';
+              var bb = document.getElementById(c === 0 ? 'bT' : 'bF');
+              if (bb) bb.style.background = '#B45454';
+              var gb2 = document.getElementById((q.correctAnswer || 0) === 0 ? 'bT' : 'bF');
+              if (gb2) gb2.style.boxShadow = '0 0 0 4px rgba(77,122,90,.35)';
+            }
+            var bn = document.getElementById('tfBonus');
+            if (bn) { bn.textContent = note; bn.style.color = ok ? '#15803D' : '#B45454'; }
             if (q.explanation) {
               var eb = document.createElement('div');
-              eb.style.cssText = 'margin-top:12px;font-size:14px;text-align:left;';
+              eb.style.cssText = 'margin-top:12px;font-size:14px;text-align:left;border-left:4px solid var(--theme-primary);padding-left:10px;';
               eb.innerHTML = '<strong>Giai thich:</strong> ' + esc(q.explanation);
               var gb = root.querySelector('.game-body');
               if (gb) gb.appendChild(eb);
@@ -993,16 +1093,26 @@ export const ExportEngine = {
             if (b) { e.stopPropagation(); speak(b.getAttribute('data-speak')); }
           });
         }
-        // Nút toàn màn hình nổi (máy chiếu lớp học) + phím F — chỉ tạo 1 lần, tránh cộng dồn khi chơi lại
-        if (!document.getElementById('ts-fs-btn')) {
+        // Nút nổi: Toàn màn hình (máy chiếu) + Mở tab mới (dự phòng khi Canva chặn fullscreen) — chỉ tạo 1 lần
+        if (!document.getElementById('ts-float-btns')) {
+          var wrap = document.createElement('div');
+          wrap.id = 'ts-float-btns';
+          wrap.style.cssText = 'position:fixed;bottom:12px;right:12px;z-index:9999;display:flex;gap:8px;opacity:.7;';
+          wrap.onmouseover = function () { wrap.style.opacity = '1'; };
+          wrap.onmouseout = function () { wrap.style.opacity = '.7'; };
           var fs = document.createElement('button');
           fs.id = 'ts-fs-btn';
           fs.innerHTML = '⛶ Toàn màn hình'; fs.title = 'Toàn màn hình (phím F)';
-          fs.style.cssText = 'position:fixed;bottom:12px;right:12px;z-index:9999;opacity:.7;padding:8px 14px;font-size:13px;font-weight:600;border-radius:8px;border:1px solid #ccc;background:#fff;cursor:pointer;';
-          fs.onmouseover = function () { fs.style.opacity = '1'; };
-          fs.onmouseout = function () { fs.style.opacity = '.7'; };
+          fs.style.cssText = 'padding:8px 14px;font-size:13px;font-weight:600;border-radius:8px;border:1px solid #ccc;background:#fff;cursor:pointer;color:#242424;';
           fs.onclick = function (e) { e.stopPropagation(); toggleFS(); };
-          document.body.appendChild(fs);
+          var nt = document.createElement('button');
+          nt.id = 'ts-newtab-btn';
+          nt.innerHTML = '↗ Mở tab mới'; nt.title = 'Mở game trong tab mới (dùng khi nhúng trong Canva bị chặn toàn màn hình)';
+          nt.style.cssText = 'padding:8px 14px;font-size:13px;font-weight:600;border-radius:8px;border:1px solid #ccc;background:#fff;cursor:pointer;color:#242424;';
+          nt.onclick = function (e) { e.stopPropagation(); try { window.open(location.href, '_blank', 'noopener'); } catch (err) {} };
+          // Khi chạy top-level (mở file trực tiếp) vẫn hữu ích; khi trong iframe Canva thì đây là lối thoát
+          wrap.appendChild(fs); wrap.appendChild(nt);
+          document.body.appendChild(wrap);
           document.addEventListener('keydown', function (e) {
             if ((e.key === 'f' || e.key === 'F') && !/INPUT|TEXTAREA/.test((e.target && e.target.tagName) || '')) toggleFS();
           });
@@ -1039,10 +1149,12 @@ export const ExportEngine = {
 
     const safeTitle = (project.name || 'Tro-Choi-TeacherStudio')
       .trim()
-      .replace(/\s+/g, '_')
-      .replace(/[^a-zA-Z0-9_\-\u00C0-\u024F\u1EA0-\u1EF9]/g, '');
+      .replace(/\s+/g, '-')
+      .replace(/[^a-zA-Z0-9_\-\u00C0-\u024F\u1EA0-\u1EF9]/g, '')
+      .slice(0, 60) || 'Tro-Choi';
+    const gameSlug = String(project.gameType || 'game').replace(/[^a-z0-9-]/gi, '');
     const suffix = prof === 'canva' ? '_Canva-Embed' : '_Offline';
-    const filename = `${safeTitle}${suffix}.html`;
+    const filename = `${safeTitle}_${gameSlug}${suffix}.html`;
 
     const a = document.createElement('a');
     a.href = url;

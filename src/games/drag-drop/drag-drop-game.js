@@ -45,18 +45,32 @@ export class DragDropGame extends BaseGame {
 
     this.placedCount = 0;
     this.placedIds = new Set();
+    this.moves = 0;
+    this.wrongs = 0;
     this.score = 0;
+    this.startAt = Date.now();
     this.state = 'playing';
 
     this.renderBoard();
   }
 
+  elapsed() {
+    return this.startAt ? Math.max(1, Math.round((Date.now() - this.startAt) / 1000)) : 0;
+  }
+
   renderBoard() {
+    const pct = Math.round(this.placedCount / Math.max(1, this.items.length) * 100);
     this.viewportEl.innerHTML = `
-      <div class="game-header">
+      <div class="game-header quiz-head">
         <span class="badge badge-primary">Kéo thả phân loại</span>
-        <span style="font-size: 13px; color: var(--theme-text-subtle);">Đã xếp: <strong>${this.placedCount} / ${this.items.length}</strong></span>
+        <span class="quiz-score">Đã xếp: <strong>${this.placedCount}/${this.items.length}</strong> • Điểm <strong>${this.score}</strong></span>
       </div>
+
+      <div class="game-body pair-body">
+        <div class="quiz-progress" title="Tiến trình ${pct}%">
+          <div class="quiz-progress-fill" style="width: ${pct}%;"></div>
+        </div>
+        <div class="pair-hint">Kéo hoặc nhấp vào thẻ rồi nhấp vào ô đích tương ứng • Lượt xếp đúng ${this.placedCount}/${this.items.length}</div>
 
       <div class="game-body" style="width: 100%; max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px;">
         
@@ -83,8 +97,8 @@ export class DragDropGame extends BaseGame {
 
       </div>
 
-      <div class="game-footer">
-        <span style="font-size: 13px; color: var(--theme-text-subtle);">Kéo hoặc nhấp vào thẻ rồi nhấp vào ô đích tương ứng</span>
+      <div class="game-footer quiz-foot">
+        <span class="quiz-hint">Đúng ${this.placedCount}/${this.items.length} • Sai ${this.wrongs} • Thử ${this.moves} • ⏱️ ${this.elapsed()}s</span>
         <button class="btn btn-secondary btn-sm" id="btn-reset-drag">↺ Xếp lại từ đầu</button>
       </div>
     `;
@@ -97,7 +111,10 @@ export class DragDropGame extends BaseGame {
         this.clearGameTimeouts();
         this.placedCount = 0;
         this.placedIds = new Set();
+        this.moves = 0;
+        this.wrongs = 0;
         this.score = 0;
+        this.startAt = Date.now();
         this.items = shuffleArr(this.items);
         this.renderBoard();
       };
@@ -156,6 +173,7 @@ export class DragDropGame extends BaseGame {
     const chipId = chipEl.getAttribute('data-id');
     // Chống cộng điểm trùng: chip đã đặt thì bỏ qua
     if (chipEl.dataset.placed === '1' || (chipId != null && this.placedIds.has(chipId))) return;
+    this.moves++;
 
     if (targetCat === bucketCat) {
       Sound.playCorrect();
@@ -163,7 +181,9 @@ export class DragDropGame extends BaseGame {
       if (chipId != null) this.placedIds.add(chipId);
       this.score += 10;
       this.placedCount++;
-      
+
+      const catTitle = this.categories.find(c => c.id === bucketCat)?.title || '';
+      chipEl.title = 'Đúng • ' + catTitle;
       const contents = bucketEl.querySelector('.bucket-contents');
       chipEl.removeAttribute('draggable');
       chipEl.onclick = null;
@@ -172,14 +192,56 @@ export class DragDropGame extends BaseGame {
       chipEl.style.outline = 'none';
       chipEl.style.background = '#4D7A5A';
       contents.appendChild(chipEl);
+      bucketEl.style.borderColor = '#4D7A5A';
+      this.gameTimeout(() => { try { bucketEl.style.borderColor = 'var(--theme-border)'; } catch (e) {} }, 500);
 
       if (this.placedCount >= this.items.length) {
         this.gameTimeout(() => this.finish(), 800);
+      } else {
+        const head = this.viewportEl.querySelector('.quiz-score strong');
+        if (head) head.textContent = `${this.placedCount}/${this.items.length}`;
       }
     } else {
       Sound.playWrong();
+      this.wrongs++;
       chipEl.style.outline = '3px solid #B45454';
-      this.gameTimeout(() => { try { chipEl.style.outline = 'none'; } catch (e) {} }, 600);
+      bucketEl.style.borderColor = '#B45454';
+      this.gameTimeout(() => { try { chipEl.style.outline = 'none'; bucketEl.style.borderColor = 'var(--theme-border)'; } catch (e) {} }, 600);
     }
+  }
+
+  renderResultScreen() {
+    const total = this.items.length || 1;
+    const secs = this.elapsed();
+    const accuracy = this.moves ? Math.round(this.placedCount / this.moves * 100) : 100;
+    this.viewportEl.innerHTML = `
+      <div class="game-header">
+        <span class="font-semibold">Phân loại hoàn thành!</span>
+        <span class="badge badge-success">Hoàn thành!</span>
+      </div>
+      <div class="game-body quiz-result-body">
+        <div class="quiz-result-card quiz-enter">
+          <div class="quiz-trophy">${this.wrongs === 0 ? '🏆' : '🎉'}</div>
+          <h2 class="quiz-result-title">Xếp đúng ${this.placedCount}/${total} mục</h2>
+          <div class="quiz-stat-row">
+            <span class="quiz-stat">⭐ <strong>${this.score}</strong> điểm</span>
+            <span class="quiz-stat">🎯 Chính xác <strong>${accuracy}%</strong></span>
+            <span class="quiz-stat">❌ Sai <strong>${this.wrongs}</strong></span>
+            <span class="quiz-stat">⏱️ <strong>${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}</strong></span>
+          </div>
+          <div class="quiz-hint">${this.wrongs === 0 ? 'Phân loại hoàn hảo! 🏆' : 'Càng ít lần đặt sai càng giỏi!'}</div>
+        </div>
+        <button class="btn btn-primary btn-lg" id="btn-restart-game">🔄 Chơi lại từ đầu</button>
+      </div>
+      <div class="game-footer"><span class="quiz-hint">TeacherStudio • ${accuracy}% chính xác</span></div>
+    `;
+    const rb = this.viewportEl.querySelector('#btn-restart-game');
+    if (rb) rb.onclick = () => this.restart();
+  }
+
+  restart() {
+    this.score = 0;
+    this.currentQuestionIndex = 0;
+    this.start();
   }
 }

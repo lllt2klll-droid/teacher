@@ -73,6 +73,51 @@ export const GameSettingsPanel = {
             </label>
           </div>
 
+          <!-- Shuffle answers (Quiz) -->
+          <div class="flex items-center justify-between" style="margin-bottom: 12px;">
+            <div>
+              <div class="font-medium" style="font-size: 13px;">Trộn đáp án (Quiz)</div>
+              <div class="text-xs text-secondary">Đảo A-B-C-D mỗi lượt, chống nhớ vị trí</div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="chk-shuffle-answers" ${settings.shuffleAnswers ? 'checked' : ''}>
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+
+          <!-- Speed bonus -->
+          <div class="flex items-center justify-between" style="margin-bottom: 12px;">
+            <div>
+              <div class="font-medium" style="font-size: 13px;">⚡ Thưởng tốc độ</div>
+              <div class="text-xs text-secondary">Trả lời nhanh (<50% giờ) +30% điểm</div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="chk-speed" ${settings.speedBonus !== false ? 'checked' : ''}>
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+
+          <!-- Streak bonus -->
+          <div class="flex items-center justify-between" style="margin-bottom: 12px;">
+            <div>
+              <div class="font-medium" style="font-size: 13px;">🔥 Thưởng chuỗi đúng</div>
+              <div class="text-xs text-secondary">Mỗi 3 câu liên tiếp +5 điểm</div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="chk-streak" ${settings.streakBonus !== false ? 'checked' : ''}>
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+
+          <!-- Seconds per question -->
+          <div class="flex items-center justify-between" style="margin-bottom: 12px;">
+            <div>
+              <div class="font-medium" style="font-size: 13px;">Giây mỗi câu</div>
+              <div class="text-xs text-secondary">5–120 giây, mặc định 30</div>
+            </div>
+            <input type="number" class="input" id="inp-timer-sec" min="5" max="120" value="${settings.timerSeconds || 30}" style="width: 76px;">
+          </div>
+
           <!-- Show explanation -->
           <div class="flex items-center justify-between" style="margin-bottom: 12px;">
             <div>
@@ -156,6 +201,39 @@ export const GameSettingsPanel = {
     if (chkShuffle) {
       chkShuffle.onchange = (e) => {
         p.settings.shuffleQuestions = e.target.checked;
+        onProjectChange(p);
+      };
+    }
+
+    const chkShuffleA = container.querySelector('#chk-shuffle-answers');
+    if (chkShuffleA) {
+      chkShuffleA.onchange = (e) => {
+        p.settings.shuffleAnswers = e.target.checked;
+        onProjectChange(p);
+      };
+    }
+
+    const chkSpeed = container.querySelector('#chk-speed');
+    if (chkSpeed) {
+      chkSpeed.onchange = (e) => {
+        p.settings.speedBonus = e.target.checked;
+        onProjectChange(p);
+      };
+    }
+
+    const chkStreak = container.querySelector('#chk-streak');
+    if (chkStreak) {
+      chkStreak.onchange = (e) => {
+        p.settings.streakBonus = e.target.checked;
+        onProjectChange(p);
+      };
+    }
+
+    const inpSec = container.querySelector('#inp-timer-sec');
+    if (inpSec) {
+      inpSec.onchange = (e) => {
+        p.settings.timerSeconds = Math.min(120, Math.max(5, parseInt(e.target.value, 10) || 30));
+        e.target.value = p.settings.timerSeconds;
         onProjectChange(p);
       };
     }
