@@ -9,7 +9,7 @@ import { Icons } from '../ui/icons.js';
 import { Notifications } from '../ui/notifications.js';
 
 export const QuestionEditor = {
-  render(container, { content, onQuestionsChange }) {
+  render(container, { content, gameType, onQuestionsChange }) {
     let questions = content.questions || [];
     let selectedQIndex = 0;
 
@@ -31,6 +31,29 @@ export const QuestionEditor = {
             </button>
           `).join('')}
         </div>
+
+        ${gameType === 'jigsaw' ? `
+        <!-- Secret cover image (jigsaw only) -->
+        <div style="padding: 12px 16px; border-bottom: 1px solid var(--color-border); background: var(--color-surface-subtle);">
+          <div class="font-semibold" style="font-size: 13px; margin-bottom: 8px;">🖼️ Tranh bí mật sau mảnh ghép</div>
+          ${content.coverImage ? `
+            <div style="text-align: center; margin-bottom: 8px;">
+              <img src="${content.coverImage}" alt="Tranh bí mật" style="max-width: 100%; max-height: 120px; border-radius: 8px; border: 1px solid var(--color-border); object-fit: cover;">
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <label class="btn btn-secondary btn-sm" style="cursor: pointer;">Đổi tranh
+                <input type="file" id="q-cover-input" accept="image/*" style="display: none;">
+              </label>
+              <button class="btn btn-secondary btn-sm" id="btn-del-cover" style="color: var(--color-danger);">✕ Xóa</button>
+            </div>
+          ` : `
+            <label class="btn btn-secondary btn-sm" style="cursor: pointer;">⬆ Tải tranh bí mật lên
+              <input type="file" id="q-cover-input" accept="image/*" style="display: none;">
+            </label>
+            <span style="font-size: 12px; color: var(--color-text-secondary); margin-left: 8px;">Không tải thì dùng nền mặc định</span>
+          `}
+        </div>
+        ` : ''}
 
         <!-- Selected Question Form -->
         <div style="padding: 16px; overflow-y: auto; flex: 1;" id="q-form-container">
@@ -152,6 +175,31 @@ export const QuestionEditor = {
             renderView();
             onQuestionsChange(questions);
           });
+        };
+      }
+
+      // Secret cover image (jigsaw)
+      const coverInput = container.querySelector('#q-cover-input');
+      if (coverInput) {
+        coverInput.onchange = async (e) => {
+          const file = e.target.files && e.target.files[0];
+          if (!file) return;
+          try {
+            content.coverImage = await ContentEngine.compressImageFile(file, 1000, 0.72);
+            renderView();
+            onQuestionsChange(questions);
+            Notifications.success('Đã đặt tranh bí mật!');
+          } catch (err) {
+            Notifications.warning('Không đọc được file ảnh. Cô chọn file JPG/PNG khác nhé.');
+          }
+        };
+      }
+      const delCoverBtn = container.querySelector('#btn-del-cover');
+      if (delCoverBtn) {
+        delCoverBtn.onclick = () => {
+          content.coverImage = '';
+          renderView();
+          onQuestionsChange(questions);
         };
       }
 

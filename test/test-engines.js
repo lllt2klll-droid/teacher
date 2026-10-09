@@ -207,9 +207,9 @@ assert(dragSrc.includes('dragGroupsFromContent'), 'Keo tha preview doc content t
 const connSrc = fs.readFileSync('src/games/connect/connect-game.js', 'utf-8');
 assert(connSrc.includes('pairsFromContent'), 'Noi y preview doc content that');
 const quizSrc = fs.readFileSync('src/games/quiz/quiz-game.js', 'utf-8');
-assert(quizSrc.includes('bindKeyboard') && quizSrc.includes('_locked') && quizSrc.includes('destroy()'), 'Quiz co phim 1-4 + chong an điem trung');
+assert(quizSrc.includes('bindKeyboard') && quizSrc.includes('_locked') && quizSrc.includes('this.bindKey'), 'Quiz co phim 1-4 + chong an diem trung');
 const wheelSrc = fs.readFileSync('src/games/wheel/wheel-game.js', 'utf-8');
-assert(wheelSrc.includes("e.key === ' '") && wheelSrc.includes('unbindKeyboard'), 'Vong quay co phim Space + don phim');
+assert(wheelSrc.includes("e.key === ' '") && wheelSrc.includes('this.bindKey'), 'Vong quay co phim Space + key tap trung');
 const cwSrc = fs.readFileSync('src/games/crossword/crossword-game.js', 'utf-8');
 assert(cwSrc.includes('crosswordWordsFromContent') && cwSrc.includes('normText(input.value)'), 'O chu doc words + cham chuan hoa');
 const expSrc = fs.readFileSync('src/core/export-engine.js', 'utf-8');
@@ -217,6 +217,44 @@ assert(expSrc.includes('/Đ/g'), 'File xuat xu ly Đ khi chuan hoa');
 assert(expSrc.includes('function dragGroups'), 'File xuat Keo tha dung logic nhom nhu preview');
 const expDrag = ExportEngine.generateStandaloneHtml({ name: 'Phan loai', gameType: 'drag-drop', themeId: 'nature' }, grpContent, 'standalone');
 assert(expDrag.includes('dragGroups'), 'HTML Keo tha xuat chua logic nhom');
+
+// 11. Dot 2: phim tap trung, manh ghep dong, dua xe %, keo co diem
+console.log('\n11. Kiem tra Dot 2 (Base key/Manh ghep/Dua xe/Keo co):');
+const BG = await import('../src/games/base-game.js');
+let added = 0, removed = 0;
+global.window = { addEventListener: () => { added++; }, removeEventListener: () => { removed++; } };
+const bg = new BG.BaseGame({ innerHTML: '' }, {}, {});
+const fn = () => {};
+bg.bindKey(fn);
+assert(added === 1 && bg.keyHandler === fn, 'BaseGame.bindKey dang ky 1 handler');
+bg.bindKey(fn);
+assert(added === 2 && removed === 1, 'bindKey moi tu go cu truoc');
+bg.destroy();
+assert(removed === 2 && bg.keyHandler === null, 'destroy() don phim + timer');
+bg.destroy();
+assert(removed === 2, 'destroy() 2 lan van an toan');
+delete global.window;
+const noDirectKey = ['src/games/quiz/quiz-game.js', 'src/games/true-false/true-false-game.js',
+  'src/games/wheel/wheel-game.js', 'src/games/flashcard/flashcard-game.js']
+  .every(f => !fs.readFileSync(f, 'utf-8').includes("addEventListener('keydown'"));
+assert(noDirectKey, '4 game dung bindKey chung, khong con key rieng le');
+const jigSrc = fs.readFileSync('src/games/jigsaw/jigsaw-game.js', 'utf-8');
+assert(jigSrc.includes('gridCols') && jigSrc.includes('gridRows'), 'Manh ghep luoi dong theo so cau');
+assert(jigSrc.includes('coverImage'), 'Manh ghep ho tro tranh bi mat tuy chinh');
+const jigHtml = ExportEngine.generateStandaloneHtml({ name: 'J', gameType: 'jigsaw', themeId: 'nature' },
+  { questions: [1, 2, 3, 4, 5, 6].map(i => ({ question: 'Q' + i, answers: ['A', 'B'], correctAnswer: 0 })), coverImage: 'data:image/png;base64,AAA' }, 'standalone');
+assert(jigHtml.includes('cover') && jigHtml.includes('gCols'), 'File xuat manh ghep co luoi dong + anh nen');
+const raceSrc = fs.readFileSync('src/games/classroom/race-game.js', 'utf-8');
+assert(raceSrc.includes('100 / this.questions.length') && raceSrc.includes('correctCount'), 'Dua xe % theo tong so cau');
+const raceHtml = ExportEngine.generateStandaloneHtml({ name: 'R', gameType: 'race', themeId: 'nature' },
+  { questions: [{ question: 'Q?', answers: ['A', 'B'], correctAnswer: 0 }] }, 'standalone');
+assert(raceHtml.includes('100 / qs.length'), 'File xuat dua xe % theo tong cau');
+const tugSrc = fs.readFileSync('src/games/classroom/tug-of-war-game.js', 'utf-8');
+assert(tugSrc.includes('blueScore') && tugSrc.includes('redScore'), 'Keo co co bang diem 2 doi');
+assert(tugSrc.includes('tugGoal') && tugSrc.includes('goal'), 'Keo co co dich tuy chinh');
+const tugHtml = ExportEngine.generateStandaloneHtml({ name: 'K', gameType: 'tug-of-war', themeId: 'nature', settings: { tugGoal: 50 } },
+  { questions: [{ question: 'Q?', answers: ['A', 'B'], correctAnswer: 0 }] }, 'standalone');
+assert(tugHtml.includes('hon diem') && tugHtml.includes('tugGoal'), 'File xuat keo co phan thang diem + dich');
 
 console.log(`\n========================================`);
 console.log(`KẾT QUẢ: Đã vượt qua ${passed} kiểm thử, Thất bại: ${failed}`);

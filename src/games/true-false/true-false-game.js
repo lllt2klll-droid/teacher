@@ -18,23 +18,14 @@ export class TrueFalseGame extends BaseGame {
   }
 
   bindKeyboard() {
-    this.unbindKeyboard();
-    this.keyHandler = (e) => {
+    this.bindKey((e) => {
       if (this.state !== 'playing') return;
       if (e.key === 'ArrowLeft' || e.key === '1') {
         this.selectAnswer(0);
       } else if (e.key === 'ArrowRight' || e.key === '2') {
         this.selectAnswer(1);
       }
-    };
-    window.addEventListener('keydown', this.keyHandler);
-  }
-
-  unbindKeyboard() {
-    if (this.keyHandler) {
-      window.removeEventListener('keydown', this.keyHandler);
-      this.keyHandler = null;
-    }
+    });
   }
 
   renderCurrentQuestion() {
@@ -115,10 +106,5 @@ export class TrueFalseGame extends BaseGame {
       this.currentQuestionIndex++;
       this.renderCurrentQuestion();
     }, 1100);
-  }
-
-  destroy() {
-    this.unbindKeyboard();
-    super.destroy();
   }
 }

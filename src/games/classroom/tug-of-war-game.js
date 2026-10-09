@@ -19,8 +19,12 @@ export class TugOfWarGame extends BaseGame {
     }
 
     this.currentQIndex = 0;
-    this.ropePosition = 0; // -50 (Blue wins) to +50 (Red wins)
+    this.ropePosition = 0; // -goal (Blue wins) to +goal (Red wins)
+    this.goal = (this.options.tugGoal > 0) ? this.options.tugGoal : 50;
+    this.pullStep = Math.max(5, Math.round(this.goal / 2.5));
     this.currentTeam = 'blue'; // 'blue' or 'red'
+    this.blueScore = 0;
+    this.redScore = 0;
     this.state = 'playing';
 
     this.renderTurn();
@@ -28,7 +32,7 @@ export class TugOfWarGame extends BaseGame {
 
   renderTurn() {
     const q = this.questions[this.currentQIndex];
-    if (!q || Math.abs(this.ropePosition) >= 50) {
+    if (!q || Math.abs(this.ropePosition) >= this.goal) {
       this.finishCompetition();
       return;
     }
@@ -39,6 +43,7 @@ export class TugOfWarGame extends BaseGame {
     this.viewportEl.innerHTML = `
       <div class="game-header">
         <span class="badge badge-primary">Kéo co đồng đội</span>
+        <span style="font-size: 13px; font-weight: 700;"><span style="color: #2563EB;">🔵 ${this.blueScore}</span> - <span style="color: #DC2626;">${this.redScore} 🔴</span></span>
         <span class="badge" style="background-color: ${teamColor}; color: #FFF; font-weight: 700;">LƯỢT CỦA: ${teamName}</span>
       </div>
 
@@ -56,7 +61,7 @@ export class TugOfWarGame extends BaseGame {
           <!-- Rope and knot -->
           <div style="position: absolute; width: 70%; height: 8px; background: #B45309; border-radius: 4px; left: 15%;"></div>
           <!-- Knot ribbon indicator -->
-          <div id="rope-knot" style="position: absolute; left: calc(50% + ${this.ropePosition * 3}px); width: 28px; height: 28px; background: #FBBF24; border: 3px solid #78350F; border-radius: 50%; transform: translateX(-50%); transition: left 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); box-shadow: var(--shadow-sm); display: flex; align-items: center; justify-content: center; font-size: 12px;">
+          <div id="rope-knot" style="position: absolute; left: calc(50% + ${Math.round(this.ropePosition * 150 / this.goal)}px); width: 28px; height: 28px; background: #FBBF24; border: 3px solid #78350F; border-radius: 50%; transform: translateX(-50%); transition: left 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); box-shadow: var(--shadow-sm); display: flex; align-items: center; justify-content: center; font-size: 12px;">
             🎀
           </div>
         </div>
@@ -84,7 +89,7 @@ export class TugOfWarGame extends BaseGame {
       </div>
 
       <div class="game-footer">
-        <span style="font-size: 13px; color: var(--theme-text-subtle);">Mỗi câu trả lời đúng sẽ kéo dây 20 bước về phía đội mình</span>
+        <span style="font-size: 13px; color: var(--theme-text-subtle);">Trả lời đúng kéo dây về phía đội mình • Hết câu thì đội nhiều điểm hơn thắng</span>
       </div>
     `;
 
@@ -96,12 +101,15 @@ export class TugOfWarGame extends BaseGame {
         if (choice === q.correctAnswer) {
           Sound.playCorrect();
           btn.classList.add('correct');
-          // Pull rope towards current team
+          // Pull rope towards current team + team point
           if (this.currentTeam === 'blue') {
-            this.ropePosition -= 20;
+            this.ropePosition -= this.pullStep;
+            this.blueScore++;
           } else {
-            this.ropePosition += 20;
+            this.ropePosition += this.pullStep;
+            this.redScore++;
           }
+          this.score += 10;
         } else {
           Sound.playWrong();
           btn.classList.add('incorrect');
@@ -119,7 +127,14 @@ export class TugOfWarGame extends BaseGame {
   finishCompetition() {
     this.state = 'finished';
     Sound.playCheer();
-    const winner = this.ropePosition < 0 ? 'ĐỘI XANH 🔵' : (this.ropePosition > 0 ? 'ĐỘI ĐỎ 🔴' : 'HÒA NHAU 🤝');
+    // Phan thang: day cham dich truoc; het cau thi xet day, roi diem doi
+    let winner;
+    if (this.ropePosition < 0) winner = 'ĐỘI XANH 🔵';
+    else if (this.ropePosition > 0) winner = 'ĐỘI ĐỎ 🔴';
+    else if (this.blueScore > this.redScore) winner = 'ĐỘI XANH 🔵 (hơn điểm)';
+    else if (this.redScore > this.blueScore) winner = 'ĐỘI ĐỎ 🔴 (hơn điểm)';
+    else winner = 'HÒA NHAU 🤝';
+    const scoreLine = `Tỉ số chung cuộc: Xanh ${this.blueScore} - ${this.redScore} Đỏ`;
     
     this.viewportEl.innerHTML = `
       <div class="game-header">
@@ -128,6 +143,7 @@ export class TugOfWarGame extends BaseGame {
       <div class="game-body text-center">
         <div style="font-size: 64px; margin-bottom: 16px;">🏆</div>
         <h2 style="font-size: 28px; margin-bottom: 12px;">CHIẾN THẮNG: ${winner}</h2>
+        <p style="color: var(--theme-text-subtle); margin-bottom: 8px;">${scoreLine}</p>
         <p style="color: var(--theme-text-subtle); margin-bottom: 24px;">Hai đội đã thi đấu rất xuất sắc và đầy tinh thần đồng đội!</p>
         <button class="btn btn-primary btn-lg" id="btn-restart-tug">🔄 Thi đấu hiệp mới</button>
       </div>
@@ -138,5 +154,9 @@ export class TugOfWarGame extends BaseGame {
 
     const restartBtn = this.viewportEl.querySelector('#btn-restart-tug');
     if (restartBtn) restartBtn.onclick = () => this.start();
+  }
+
+  restart() {
+    this.start();
   }
 }

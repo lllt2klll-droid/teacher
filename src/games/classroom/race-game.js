@@ -9,9 +9,17 @@ import { questionImageHtml, teacherBadgeHtml } from '../question-media.js';
 
 export class RaceGame extends BaseGame {
   start() {
-    this.questions = this.content?.questions || [];
+    this.questions = (this.content?.questions || []).length > 0 ? this.content.questions : [
+      { question: 'Màu cờ Tổ quốc Việt Nam?', answers: ['Đỏ', 'Xanh', 'Vàng', 'Trắng'], correctAnswer: 0 },
+      { question: '7 + 5 = ?', answers: ['11', '12', '13', '10'], correctAnswer: 1 },
+      { question: 'Con vật nào đẻ trứng?', answers: ['Gà', 'Chó', 'Mèo', 'Bò'], correctAnswer: 0 },
+      { question: 'Một tuần có mấy ngày?', answers: ['5', '6', '7', '8'], correctAnswer: 2 }
+    ];
     this.currentQIndex = 0;
     this.score = 0;
+    this.correctCount = 0;
+    // Tien % theo tong so cau: dung het = ve dich (khong con +25% cung)
+    this.step = 100 / this.questions.length;
     this.playerProgress = 0; // 0 to 100%
     this.state = 'playing';
 
@@ -28,7 +36,7 @@ export class RaceGame extends BaseGame {
     this.viewportEl.innerHTML = `
       <div class="game-header">
         <span class="badge badge-primary">Đua xe tốc độ</span>
-        <span style="font-size: 13px; color: var(--theme-text-subtle);">Quãng đường: <strong>${Math.min(100, this.playerProgress)}%</strong></span>
+        <span style="font-size: 13px; color: var(--theme-text-subtle);">Đúng ${this.correctCount}/${this.questions.length} câu • Quãng đường: <strong>${Math.min(100, Math.floor(this.playerProgress))}%</strong></span>
       </div>
 
       <div class="game-body" style="width: 100%; max-width: 800px; margin: 0 auto;">
@@ -69,7 +77,7 @@ export class RaceGame extends BaseGame {
       </div>
 
       <div class="game-footer">
-        <span style="font-size: 13px; color: var(--theme-text-subtle);">Mỗi câu trả lời đúng tăng tốc tiến 25% quãng đường</span>
+        <span style="font-size: 13px; color: var(--theme-text-subtle);">Trả lời đúng mọi câu để xe về đích 100%</span>
       </div>
     `;
 
@@ -81,7 +89,8 @@ export class RaceGame extends BaseGame {
         if (choice === q.correctAnswer) {
           Sound.playCorrect();
           btn.classList.add('correct');
-          this.playerProgress += 25;
+          this.correctCount++;
+          this.playerProgress = Math.min(100, this.playerProgress + this.step);
           this.score += 20;
         } else {
           Sound.playWrong();

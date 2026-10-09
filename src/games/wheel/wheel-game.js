@@ -100,23 +100,14 @@ export class WheelGame extends BaseGame {
   }
 
   bindKeyboard() {
-    this.unbindKeyboard();
-    this.keyHandler = (e) => {
+    this.bindKey((e) => {
       if (this.state !== 'playing') return;
       if (e.target && /INPUT|TEXTAREA/.test(e.target.tagName)) return;
       if (e.key === ' ') {
         e.preventDefault();
         if (!this.isSpinning && this.optionsList.length > 0) this.spinWheel();
       }
-    };
-    window.addEventListener('keydown', this.keyHandler);
-  }
-
-  unbindKeyboard() {
-    if (this.keyHandler) {
-      window.removeEventListener('keydown', this.keyHandler);
-      this.keyHandler = null;
-    }
+    });
   }
 
   drawWheel() {
@@ -225,10 +216,5 @@ export class WheelGame extends BaseGame {
     if (removeBtn) {
       removeBtn.style.display = 'inline-flex';
     }
-  }
-
-  destroy() {
-    this.unbindKeyboard();
-    super.destroy();
   }
 }

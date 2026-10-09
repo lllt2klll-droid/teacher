@@ -20,6 +20,13 @@ export class JigsawGame extends BaseGame {
     }
 
     this.totalTiles = Math.max(4, this.questions.length);
+    this.totalTiles = Math.min(9, this.totalTiles);
+    this.questions = this.questions.slice(0, this.totalTiles);
+    // Luoi dong theo so cau: 4 -> 2x2, 6 -> 3x2, 9 -> 3x3
+    this.gridCols = Math.ceil(Math.sqrt(this.totalTiles));
+    this.gridRows = Math.ceil(this.totalTiles / this.gridCols);
+    // Anh nen bi mat: content.coverImage (se co cho tai o Dot 3), tam dung gradient
+    this.coverImage = (this.content && this.content.coverImage) || '';
     this.revealedTiles = new Set();
     this.currentQIndex = 0;
     this.state = 'playing';
@@ -43,18 +50,20 @@ export class JigsawGame extends BaseGame {
       <div class="game-body gv-side-2" style="display: flex; gap: 24px; align-items: center; justify-content: center; width: 100%; max-width: 840px;">
         
         <!-- Puzzle Grid with mystery background image -->
-        <div style="position: relative; width: min(300px, 100%); aspect-ratio: 1 / 1; border-radius: 12px; overflow: hidden; box-shadow: var(--shadow-md); flex-shrink: 0; background: linear-gradient(135deg, #1E3A8A, #3B82F6, #10B981);">
-          
+        <div style="position: relative; width: min(300px, 100%); aspect-ratio: 1 / 1; border-radius: 12px; overflow: hidden; box-shadow: var(--shadow-md); flex-shrink: 0; ${this.coverImage ? '' : 'background: linear-gradient(135deg, #1E3A8A, #3B82F6, #10B981);'}">
+
           <!-- Underlying secret visual -->
-          <div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #FFF; text-align: center; padding: 20px;">
+          ${this.coverImage
+            ? `<img src="${this.coverImage}" alt="Tranh bí mật" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;">`
+            : `<div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #FFF; text-align: center; padding: 20px;">
             <div style="font-size: 64px; margin-bottom: 8px;">🌟</div>
             <div style="font-size: 18px; font-weight: 700;">HỌC TẬP TỐT</div>
             <div style="font-size: 14px; opacity: 0.9;">Bức tranh bí mật đã được giải mã!</div>
-          </div>
+          </div>`}
 
-          <!-- Covering Tiles Grid (2x2 or 3x3) -->
-          <div id="jigsaw-tiles-grid" style="position: absolute; inset: 0; display: grid; grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(2, 1fr); gap: 2px;">
-            ${Array.from({ length: 4 }).map((_, i) => `
+          <!-- Covering Tiles Grid -->
+          <div id="jigsaw-tiles-grid" style="position: absolute; inset: 0; display: grid; grid-template-columns: repeat(${this.gridCols}, 1fr); grid-template-rows: repeat(${this.gridRows}, 1fr); gap: 2px;">
+            ${Array.from({ length: this.totalTiles }).map((_, i) => `
               <div class="jigsaw-tile" data-index="${i}" style="background-color: var(--theme-surface); display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 700; color: var(--theme-text); transition: all 0.4s ease; border: 1px solid var(--theme-border); ${this.revealedTiles.has(i) ? 'opacity: 0; pointer-events: none; transform: scale(0.8);' : 'opacity: 1;'}">
                 ${i + 1}
               </div>

@@ -646,17 +646,26 @@ export const ExportEngine = {
           { question: 'Thu do Viet Nam?', answers: ['Ha Noi', 'Hue', 'Da Nang', 'Can Tho'], correctAnswer: 0 },
           { question: 'So lien sau 99?', answers: ['100', '98', '101', '90'], correctAnswer: 0 },
           { question: '1 tuan may ngay?', answers: ['7', '5', '6', '8'], correctAnswer: 0 }];
-        var open = {}, n = 0, qi = 0, total = 4;
+        var open = {}, n = 0, qi = 0;
+        var total = Math.min(9, Math.max(4, qs.length));
+        qs = qs.slice(0, total);
+        var gCols = Math.ceil(Math.sqrt(total));
+        var gRows = Math.ceil(total / gCols);
+        var cover = (content && content.coverImage) || '';
+        var tiles = [];
+        for (var ti = 0; ti < total; ti++) tiles.push(ti);
         function draw() {
           var q = qs[qi];
           if (!q || n >= total) { document.onkeydown = null; finishScreen('Da mo het buc tranh bi mat!'); return; }
           root.innerHTML = header('Manh ghep bi mat', '<span>Da mo: <strong>' + n + ' / ' + total + '</strong></span>') +
             '<div class="game-body" style="display:flex;gap:24px;align-items:center;justify-content:center;width:100%;max-width:840px;flex-wrap:wrap;">' +
-            '<div style="position:relative;width:280px;height:280px;border-radius:12px;overflow:hidden;flex-shrink:0;background:linear-gradient(135deg,#1E3A8A,#3B82F6,#10B981);">' +
-            '<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;text-align:center;padding:20px;">' +
-            '<div style="font-size:60px;">🌟</div><div style="font-size:18px;font-weight:700;">HOC TAP TOT</div></div>' +
-            '<div style="position:absolute;inset:0;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:2px;">' +
-            [0, 1, 2, 3].map(function (i) {
+            '<div style="position:relative;width:min(280px,100%);aspect-ratio:1/1;border-radius:12px;overflow:hidden;flex-shrink:0;' + (cover ? '' : 'background:linear-gradient(135deg,#1E3A8A,#3B82F6,#10B981);') + '">' +
+            (cover
+              ? '<img src="' + cover + '" alt="Tranh bi mat" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;">'
+              : '<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;text-align:center;padding:20px;">' +
+                '<div style="font-size:60px;">🌟</div><div style="font-size:18px;font-weight:700;">HOC TAP TOT</div></div>') +
+            '<div style="position:absolute;inset:0;display:grid;grid-template-columns:repeat(' + gCols + ',1fr);grid-template-rows:repeat(' + gRows + ',1fr);gap:2px;">' +
+            tiles.map(function (i) {
               return '<div style="background:var(--theme-surface);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;' +
                 (open[i] ? 'opacity:0;pointer-events:none;' : '') + '">' + (i + 1) + '</div>'; }).join('') +
             '</div></div>' +
@@ -751,28 +760,36 @@ export const ExportEngine = {
         var qs = questions.length ? questions : [
           { question: '12 x 5 = ?', answers: ['50', '60', '70', '55'], correctAnswer: 1 },
           { question: 'So nguyen to nho nhat?', answers: ['1', '2', '3', '0'], correctAnswer: 1 }];
-        var qi = 0, rope = 0, team = 'blue';
+        var qi = 0, rope = 0, team = 'blue', bS = 0, rS = 0;
+        var goal = (project.settings && project.settings.tugGoal > 0) ? project.settings.tugGoal : 50;
+        var step = Math.max(5, Math.round(goal / 2.5));
         function draw() {
-          if (qi >= qs.length || Math.abs(rope) >= 50) {
-            var w = rope < 0 ? 'DOI XANH 🔵' : (rope > 0 ? 'DOI DO 🔴' : 'HOA NHAU 🤝');
+          if (qi >= qs.length || Math.abs(rope) >= goal) {
+            var w;
+            if (rope < 0) w = 'DOI XANH 🔵';
+            else if (rope > 0) w = 'DOI DO 🔴';
+            else if (bS > rS) w = 'DOI XANH 🔵 (hon diem)';
+            else if (rS > bS) w = 'DOI DO 🔴 (hon diem)';
+            else w = 'HOA NHAU 🤝';
             Sound.playCheer();
             root.innerHTML = header('Keo co hoan tat!', '<span class="badge badge-success">Ket thuc</span>') +
               '<div class="game-body text-center"><div style="font-size:64px;">🏆</div>' +
               '<h2 style="font-size:28px;margin:12px 0;">CHIEN THANG: ' + w + '</h2>' +
+              '<p>Ti so: Xanh ' + bS + ' - ' + rS + ' Do</p>' +
               '<button class="btn btn-primary btn-lg" id="bR">🔄 Hiep moi</button></div>' + footer();
-            document.getElementById('bR').onclick = function () { qi = 0; rope = 0; team = 'blue'; score = 0; draw(); };
+            document.getElementById('bR').onclick = function () { qi = 0; rope = 0; team = 'blue'; bS = 0; rS = 0; score = 0; draw(); };
             return;
           }
           var q = qs[qi], tn = team === 'blue' ? 'DOI XANH' : 'DOI DO';
           var tc = team === 'blue' ? '#2563EB' : '#DC2626';
-          root.innerHTML = header('Keo co dong doi', '<span class="badge" style="background:' + tc + ';color:#fff;">LUOT: ' + tn + '</span>') +
+          root.innerHTML = header('Keo co dong doi', '<span><strong style="color:#2563EB;">🔵 ' + bS + '</strong> - <strong style="color:#DC2626;">' + rS + ' 🔴</strong></span> <span class="badge" style="background:' + tc + ';color:#fff;">LUOT: ' + tn + '</span>') +
             '<div class="game-body" style="max-width:800px;margin:0 auto;width:100%;">' +
             '<div style="width:100%;height:90px;background:var(--theme-surface);border:2px solid var(--theme-border);border-radius:16px;position:relative;display:flex;align-items:center;justify-content:center;margin-bottom:20px;overflow:hidden;">' +
             '<div style="position:absolute;width:2px;height:100%;background:#94A3B8;left:50%;"></div>' +
             '<div style="position:absolute;left:16px;font-weight:700;color:#2563EB;">🏁 XANH</div>' +
             '<div style="position:absolute;right:16px;font-weight:700;color:#DC2626;">DO 🏁</div>' +
             '<div style="position:absolute;width:70%;height:8px;background:#B45309;border-radius:4px;left:15%;"></div>' +
-            '<div style="position:absolute;left:calc(50% + ' + (rope * 3) + 'px);width:28px;height:28px;background:#FBBF24;border:3px solid #78350F;border-radius:50%;transform:translateX(-50%);transition:left .5s;">🎀</div></div>' +
+            '<div style="position:absolute;left:calc(50% + ' + Math.round(rope * 150 / goal) + 'px);width:28px;height:28px;background:#FBBF24;border:3px solid #78350F;border-radius:50%;transform:translateX(-50%);transition:left .5s;">🎀</div></div>' +
             '<div style="width:100%;background:var(--theme-surface);border:2px solid var(--theme-border);border-radius:12px;padding:20px;text-align:center;">' +
             '<div style="color:' + tc + ';font-weight:700;margin-bottom:8px;">' + tn + ' tra loi:</div>' +
             qImg(q, 140) + gvBadge(q) +
@@ -781,12 +798,13 @@ export const ExportEngine = {
             (q.answers || []).map(function (a, i) {
               return '<button class="game-option-btn" data-i="' + i + '"><span class="game-option-letter">' +
                 String.fromCharCode(65 + i) + '</span><span>' + esc(a) + '</span></button>'; }).join('') +
-            '</div></div></div>' + footer('Dung keo 20 buoc ve doi minh');
+            '</div></div></div>' + footer('Dung keo ve doi minh • Het cau thi doi nhieu diem thang');
           var bs = root.querySelectorAll('.game-option-btn');
           for (var k = 0; k < bs.length; k++) { (function (i) {
             bs[i].onclick = function () {
               if (i === q.correctAnswer) { Sound.playCorrect(); bs[i].classList.add('correct');
-                rope += (team === 'blue' ? -20 : 20); score += 10; }
+                if (team === 'blue') { rope -= step; bS++; } else { rope += step; rS++; }
+                score += 10; }
               else { Sound.playWrong(); bs[i].classList.add('incorrect'); }
               team = team === 'blue' ? 'red' : 'blue'; qi++;
               setTimeout(draw, 900); }; })(k); }
@@ -797,12 +815,17 @@ export const ExportEngine = {
 
       /* ---- RACE ---- */
       function runRace() {
-        var qs = questions.length ? questions : [{ question: 'Mau co To quoc?', answers: ['Do', 'Xanh', 'Vang', 'Trang'], correctAnswer: 0 }];
-        var qi = 0, prog = 0;
+        var qs = questions.length ? questions : [
+          { question: 'Mau co To quoc?', answers: ['Do', 'Xanh', 'Vang', 'Trang'], correctAnswer: 0 },
+          { question: '7 + 5 = ?', answers: ['11', '12', '13', '10'], correctAnswer: 1 },
+          { question: 'Con vat nao de trung?', answers: ['Ga', 'Cho', 'Meo', 'Bo'], correctAnswer: 0 },
+          { question: '1 tuan may ngay?', answers: ['5', '6', '7', '8'], correctAnswer: 2 }];
+        var qi = 0, prog = 0, okCount = 0;
+        var step = 100 / qs.length;
         function draw() {
           var q = qs[qi];
           if (!q || prog >= 100) { finishScreen('Ve dich! 🏁', 'Hoan thanh duong dua'); return; }
-          root.innerHTML = header('Dua xe toc do', '<span>Quang duong: <strong>' + prog + '%</strong></span>') +
+          root.innerHTML = header('Dua xe toc do', '<span>Dung ' + okCount + '/' + qs.length + ' cau • Quang duong: <strong>' + Math.floor(Math.min(100, prog)) + '%</strong></span>') +
             '<div class="game-body" style="max-width:800px;margin:0 auto;width:100%;">' +
             '<div style="width:100%;height:80px;background:#334155;border-radius:12px;position:relative;overflow:hidden;margin-bottom:20px;border:3px solid #1E293B;">' +
             '<div style="position:absolute;top:50%;left:0;right:0;border-top:2px dashed #CBD5E1;"></div>' +
@@ -815,11 +838,11 @@ export const ExportEngine = {
             (q.answers || []).map(function (a, i) {
               return '<button class="game-option-btn" data-i="' + i + '"><span class="game-option-letter">' +
                 String.fromCharCode(65 + i) + '</span><span>' + esc(a) + '</span></button>'; }).join('') +
-            '</div></div></div>' + footer('Dung +25% quang duong');
+            '</div></div></div>' + footer('Dung het cac cau de ve dich 100%');
           var bs = root.querySelectorAll('.game-option-btn');
           for (var k = 0; k < bs.length; k++) { (function (i) {
             bs[i].onclick = function () {
-              if (i === q.correctAnswer) { Sound.playCorrect(); bs[i].classList.add('correct'); prog += 25; score += 20; }
+              if (i === q.correctAnswer) { Sound.playCorrect(); bs[i].classList.add('correct'); okCount++; prog = Math.min(100, prog + step); score += 20; }
               else { Sound.playWrong(); bs[i].classList.add('incorrect'); }
               qi++; setTimeout(draw, 850); }; })(k); }
           if (PROFILE === 'canva') notifyParent();

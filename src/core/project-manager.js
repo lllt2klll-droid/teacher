@@ -66,7 +66,8 @@ export const ProjectManager = {
         showExplanation: true,
         soundEnabled: true,
         readAloud: true,
-        teacherMode: false
+        teacherMode: false,
+        tugGoal: 50
       },
       viewport: {
         mode: '16:9'

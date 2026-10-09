@@ -166,6 +166,7 @@ export const EditorView = {
 
       QuestionEditor.render(leftContainer, {
         content,
+        gameType: project.gameType,
         onQuestionsChange: (newQuestions) => {
           content.questions = newQuestions;
           recordHistory();

@@ -18,6 +18,21 @@ export class FlashcardGame extends BaseGame {
     this.isFlipped = false;
     this.masteredCount = 0;
     this.state = 'playing';
+    // Phim Space lat the, mui ten chuyen the (tu don khi destroy nho BaseGame)
+    this.bindKey((e) => {
+      if (this.state !== 'playing') return;
+      if (e.target && /INPUT|TEXTAREA/.test(e.target.tagName)) return;
+      if (e.key === ' ') {
+        const b = document.getElementById('btn-flip-card');
+        if (b) { e.preventDefault(); b.click(); }
+      } else if (e.key === 'ArrowRight') {
+        const n = document.getElementById('btn-next-card');
+        if (n) n.click();
+      } else if (e.key === 'ArrowLeft') {
+        const p = document.getElementById('btn-prev-card');
+        if (p) p.click();
+      }
+    });
     this.renderCard();
   }
 

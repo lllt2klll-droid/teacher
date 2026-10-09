@@ -122,8 +122,26 @@ export class BaseGame {
     }
   }
 
+  // Central keyboard registry: every game stores its handler here so
+  // destroy() always cleans up, even if the game forgets to unbind.
+  bindKey(handler) {
+    this.unbindKey();
+    this.keyHandler = handler;
+    if (typeof window !== 'undefined' && handler) {
+      window.addEventListener('keydown', handler);
+    }
+  }
+
+  unbindKey() {
+    if (this.keyHandler && typeof window !== 'undefined') {
+      try { window.removeEventListener('keydown', this.keyHandler); } catch (e) {}
+    }
+    this.keyHandler = null;
+  }
+
   destroy() {
     this.stopTimer();
+    this.unbindKey();
     if (this.container) {
       this.container.innerHTML = '';
     }

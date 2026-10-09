@@ -21,7 +21,7 @@ export class QuizGame extends BaseGame {
 
   renderCurrentQuestion() {
     this.stopTimer();
-    this.unbindKeyboard();
+    this.unbindKey();
     const q = this.questions[this.currentQuestionIndex];
     if (!q) {
       this.finish();
@@ -111,7 +111,7 @@ export class QuizGame extends BaseGame {
   }
 
   bindKeyboard(q, optionCount) {
-    this.keyHandler = (e) => {
+    this.bindKey((e) => {
       if (this.state !== 'playing' || this._locked) return;
       if (e.target && /INPUT|TEXTAREA/.test(e.target.tagName)) return;
       const map = { 1: 0, 2: 1, 3: 2, 4: 3, a: 0, b: 1, c: 2, d: 3 };
@@ -119,15 +119,7 @@ export class QuizGame extends BaseGame {
       if (idx !== undefined && idx < optionCount) {
         this.handleAnswer(idx, q);
       }
-    };
-    window.addEventListener('keydown', this.keyHandler);
-  }
-
-  unbindKeyboard() {
-    if (this.keyHandler) {
-      window.removeEventListener('keydown', this.keyHandler);
-      this.keyHandler = null;
-    }
+    });
   }
 
   handleAnswer(selectedIndex, q) {
@@ -168,10 +160,5 @@ export class QuizGame extends BaseGame {
       this.currentQuestionIndex++;
       this.renderCurrentQuestion();
     }, this.options.showExplanation && q.explanation ? 2400 : 1200);
-  }
-
-  destroy() {
-    this.unbindKeyboard();
-    super.destroy();
   }
 }
