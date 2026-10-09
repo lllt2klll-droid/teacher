@@ -48,7 +48,7 @@ export class DragDropGame extends BaseGame {
         </div>
 
         <!-- Drop targets / buckets -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        <div class="gv-grid-2">
           ${this.categories.map(cat => `
             <div class="drop-target-box" data-cat="${cat.id}" style="min-height: 180px; background: var(--theme-surface); border: 2px solid var(--theme-border); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; transition: border-color 0.2s;">
               <div class="font-semibold" style="margin-bottom: 12px; font-size: 16px; border-bottom: 1px solid var(--theme-border); padding-bottom: 8px;">

@@ -46,7 +46,7 @@ export class MatchingGame extends BaseGame {
           Nhấp chọn một mục ở Cột A, sau đó chọn mục tương ứng ở Cột B
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; width: 100%;">
+        <div class="gv-grid-2">
           
           <!-- Column A -->
           <div class="flex flex-col gap-2" id="col-left">

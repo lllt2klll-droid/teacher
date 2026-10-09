@@ -40,10 +40,10 @@ export class JigsawGame extends BaseGame {
         <span style="font-size: 13px; color: var(--theme-text-subtle);">Đã mở: <strong>${this.revealedTiles.size} / ${this.totalTiles}</strong> mảnh</span>
       </div>
 
-      <div class="game-body" style="display: flex; gap: 24px; align-items: center; justify-content: center; width: 100%; max-width: 840px;">
+      <div class="game-body gv-side-2" style="display: flex; gap: 24px; align-items: center; justify-content: center; width: 100%; max-width: 840px;">
         
         <!-- Puzzle Grid with mystery background image -->
-        <div style="position: relative; width: 300px; height: 300px; border-radius: 12px; overflow: hidden; box-shadow: var(--shadow-md); flex-shrink: 0; background: linear-gradient(135deg, #1E3A8A, #3B82F6, #10B981);">
+        <div style="position: relative; width: min(300px, 100%); aspect-ratio: 1 / 1; border-radius: 12px; overflow: hidden; box-shadow: var(--shadow-md); flex-shrink: 0; background: linear-gradient(135deg, #1E3A8A, #3B82F6, #10B981);">
           
           <!-- Underlying secret visual -->
           <div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #FFF; text-align: center; padding: 20px;">

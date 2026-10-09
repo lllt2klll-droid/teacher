@@ -74,6 +74,13 @@ export const EditorView = {
           </div>
         </div>
 
+        <!-- Mobile panel tabs (chỉ hiện ≤860px, xem responsive.css) -->
+        <div class="editor-mobile-tabs" style="gap: 8px; padding: 8px 12px; background: var(--color-surface); border-bottom: 1px solid var(--color-border);">
+          <button class="btn btn-subtle btn-sm m-tab" data-panel="left">📝 Nội dung</button>
+          <button class="btn btn-subtle btn-sm m-tab active" data-panel="center">👁️ Xem trước</button>
+          <button class="btn btn-subtle btn-sm m-tab" data-panel="right">🎨 Thiết kế</button>
+        </div>
+
         <!-- 3-Column Workspace -->
         <div class="editor-workspace">
           
@@ -176,6 +183,25 @@ export const EditorView = {
 
     renderSubPanels();
     mountLivePreview();
+
+    // Mobile tabs: Nội dung / Xem trước / Thiết kế
+    const setMobilePanel = (which) => {
+      const left = container.querySelector('.editor-left-panel');
+      const center = container.querySelector('.editor-center-panel');
+      const right = container.querySelector('.editor-right-panel');
+      [left, center, right].forEach(p => p && p.classList.remove('m-active'));
+      if (which === 'left' && left) left.classList.add('m-active');
+      if (which === 'center' && center) center.classList.add('m-active');
+      if (which === 'right' && right) right.classList.add('m-active');
+      container.querySelectorAll('.m-tab').forEach(b => {
+        b.classList.toggle('active', b.getAttribute('data-panel') === which);
+      });
+    };
+    // Mặc định mở Xem trước trên màn hình nhỏ
+    if (window.innerWidth <= 860) setMobilePanel('center');
+    container.querySelectorAll('.m-tab').forEach(btn => {
+      btn.onclick = () => setMobilePanel(btn.getAttribute('data-panel'));
+    });
 
     // Bind Toolbar Actions
     const backBtn = container.querySelector('#btn-editor-back');

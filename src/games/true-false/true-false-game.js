@@ -50,7 +50,7 @@ export class TrueFalseGame extends BaseGame {
         ${teacherBadgeHtml(q, this.options.teacherMode)}
         ${questionTextRow(q, 22, this.options.readAloud !== false)}
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 100%;">
+        <div class="gv-grid-2">
           <button class="btn tf-btn" id="btn-true" style="padding: 32px 20px; font-size: 24px; font-weight: 700; border-radius: 16px; border: 3px solid #4D7A5A; background-color: rgba(77, 122, 90, 0.1); color: #2D5838;">
             ✓ ĐÚNG
             <div style="font-size: 13px; font-weight: 400; opacity: 0.8; margin-top: 4px;">(Phím 1 hoặc ←)</div>

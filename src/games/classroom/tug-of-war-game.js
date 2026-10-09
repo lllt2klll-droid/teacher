@@ -71,7 +71,7 @@ export class TugOfWarGame extends BaseGame {
             ${this.options.readAloud !== false ? `<button class="btn btn-secondary btn-sm btn-speak" data-speak="${q.question.replace(/"/g, '&quot;')}" title="Đọc to câu hỏi">🔊</button>` : ''}
           </div>
 
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="gv-grid-2" style="gap: 12px;">
             ${(q.answers || []).map((ans, idx) => `
               <button class="game-option-btn tug-opt-btn" data-index="${idx}" style="margin-bottom: 0;">
                 <span class="game-option-letter">${String.fromCharCode(65 + idx)}</span>

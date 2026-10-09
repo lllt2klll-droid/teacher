@@ -149,6 +149,32 @@ const bigImgContent = { questions: [{ question: 'Q?', answers: ['A', 'B'], corre
 const bigVal = ValidationEngine.validateProjectForExport({ name: 'Nang', gameType: 'quiz' }, bigImgContent);
 assert(bigVal.checks.some(c => c.status === 'warning'), 'Cảnh báo khi ảnh quá nặng (>1.5MB)');
 
+// 9. Responsive + đồ họa đa thiết bị
+console.log('\n9. Kiểm tra Responsive đa thiết bị:');
+const fs = await import('fs');
+const css = fs.readFileSync('src/styles/responsive.css', 'utf-8');
+assert(css.includes('@media (max-width: 860px)'), 'Có breakpoint tablet 860px');
+assert(css.includes('@media (max-width: 640px)'), 'Có breakpoint điện thoại 640px');
+assert(css.includes('.gv-grid-2'), 'Có lưới game 2 cột co giãn');
+assert(css.includes('pointer: coarse'), 'Có mục tiêu chạm ≥44px cho cảm ứng');
+assert(css.includes('.sidebar-backdrop'), 'Có nền mờ menu mobile');
+assert(css.includes('.editor-mobile-tabs'), 'Có tab panel editor mobile');
+const indexHtml = fs.readFileSync('index.html', 'utf-8');
+assert(indexHtml.includes('responsive.css'), 'index.html đã nạp responsive.css');
+const noInlineGrid = ['src/games/true-false/true-false-game.js', 'src/games/matching/matching-game.js',
+  'src/games/drag-drop/drag-drop-game.js', 'src/games/classroom/tug-of-war-game.js',
+  'src/games/classroom/race-game.js'].every(f => !fs.readFileSync(f, 'utf-8').includes('grid-template-columns: 1fr 1fr'));
+assert(noInlineGrid, '5 game đã bỏ grid inline cứng, dùng class gv-grid-2');
+const editorJs = fs.readFileSync('src/editor/editor.js', 'utf-8');
+assert(editorJs.includes('m-tab') && editorJs.includes('m-active'), 'Editor có tab Nội dung/Xem trước/Thiết kế');
+const appJs = fs.readFileSync('src/app/app.js', 'utf-8');
+assert(appJs.includes('sidebar-backdrop') && appJs.includes('mobile-open'), 'App shell mở/đóng menu mobile');
+assert(!appJs.includes('style="display: none;"') || !appJs.includes('btn-mobile-menu" style'), 'Nút menu mobile không còn bị ẩn cứng');
+const layoutCss = fs.readFileSync('src/styles/layout.css', 'utf-8');
+assert(!layoutCss.includes('left: -240px'), 'Đã xóa hack sidebar cũ, dùng hệ thống transform thống nhất');
+const themesCss = fs.readFileSync('src/styles/themes.css', 'utf-8');
+assert(themesCss.includes('clamp(') && themesCss.includes('gvPop'), 'Game có chữ clamp() + animation phản hồi');
+
 console.log(`\n========================================`);
 console.log(`KẾT QUẢ: Đã vượt qua ${passed} kiểm thử, Thất bại: ${failed}`);
 if (failed > 0) process.exit(1);

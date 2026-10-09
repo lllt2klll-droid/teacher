@@ -37,7 +37,7 @@ export class ConnectGame extends BaseGame {
           Nhấp chọn một mục ở cột trái, rồi nhấp vào mục tương ứng ở cột phải để nối
         </div>
 
-        <div style="display: flex; justify-content: space-between; gap: 40px; position: relative;">
+        <div class="gv-side-2" style="display: flex; justify-content: space-between; gap: 40px; position: relative;">
           
           <!-- Left items -->
           <div class="flex flex-col gap-3" style="flex: 1;">

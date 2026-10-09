@@ -1,0 +1,167 @@
+/* ==========================================================================
+   TeacherStudio Responsive System - Đồ họa đẹp & vừa mọi thiết bị
+   Breakpoints: ≥1280 desktop rộng | 861–1279 laptop | 641–860 tablet |
+   ≤640 điện thoại lớn | ≤420 điện thoại nhỏ
+   ========================================================================== */
+
+/* ---------- Lưới 2 cột dùng chung cho game (thay inline style) ---------- */
+.gv-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  width: 100%;
+}
+@media (max-width: 560px) {
+  .gv-grid-2 { grid-template-columns: 1fr; gap: 10px; }
+}
+
+/* ---------- Co chữ & padding game theo màn hình ---------- */
+.game-viewport .game-q-text {
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+.game-viewport canvas { max-width: 100%; height: auto; }
+.game-viewport img { max-width: 100%; height: auto; }
+
+/* Cặp panel cạnh nhau (Nối ý, Mảnh ghép): xếp dọc trên màn hình hẹp */
+@media (max-width: 560px) {
+  .game-viewport .gv-side-2 { flex-direction: column; gap: 12px; }
+}
+
+/* Ghi đè style inline cỡ chữ cố định trên màn hình nhỏ */
+@media (max-width: 480px) {
+  .game-viewport .game-q-text { font-size: 17px !important; line-height: 1.5 !important; }
+  .game-viewport #big-timer-display { font-size: clamp(44px, 14vw, 72px) !important; padding: 12px 20px !important; }
+  .game-viewport .tf-btn { padding: 20px 12px !important; font-size: 19px !important; }
+}
+
+/* Nút đáp án đủ lớn cho ngón tay, chữ không tràn */
+.game-option-btn { min-height: 44px; overflow-wrap: break-word; word-break: break-word; }
+.game-option-btn > span:last-child { min-width: 0; }
+
+/* ---------- Tablet ≤1100px: gọn panel phải editor ---------- */
+@media (max-width: 1100px) {
+  .editor-left-panel { width: 320px; }
+  .editor-right-panel { width: 280px; }
+  .topbar-search-btn { min-width: 200px; }
+}
+
+/* ---------- Tablet dọc / laptop nhỏ ≤860px ---------- */
+@media (max-width: 860px) {
+  .view-container { padding: var(--space-4); }
+
+  /* Sidebar thành ngăn kéo */
+  .app-sidebar {
+    position: fixed; left: 0; top: 0; bottom: 0; z-index: 60;
+    transform: translateX(-100%); transition: transform var(--transition-normal);
+    width: min(280px, 84vw); box-shadow: var(--shadow-lg);
+  }
+  .app-sidebar.mobile-open { transform: translateX(0); }
+  .app-sidebar.collapsed { width: min(280px, 84vw); }
+  .app-sidebar.collapsed .brand-name,
+  .app-sidebar.collapsed .nav-label,
+  .app-sidebar.collapsed .nav-section-title { display: inline; }
+  .app-sidebar.collapsed .nav-item { justify-content: flex-start; }
+  #btn-mobile-menu { display: inline-flex !important; }
+  .sidebar-backdrop {
+    position: fixed; inset: 0; z-index: 55;
+    background: rgba(0, 0, 0, 0.45);
+  }
+
+  /* Topbar gọn */
+  .app-topbar { padding: 0 var(--space-3); }
+  .topbar-search-btn { min-width: 0; }
+  .topbar-search-btn span { display: none; }
+  #btn-topbar-new { font-size: 0; gap: 0; padding: 8px 10px; }
+  #btn-topbar-new svg, #btn-topbar-new .icon { font-size: 16px; }
+
+  /* Editor: tab chuyển panel */
+  .editor-toolbar { flex-wrap: wrap; height: auto; min-height: 52px; padding: 8px 12px; row-gap: 8px; }
+  .editor-workspace { height: calc(100% - 96px); position: relative; }
+  .editor-mobile-tabs { display: flex !important; }
+  .editor-left-panel, .editor-center-panel, .editor-right-panel { display: none; width: 100%; height: 100%; border: none; }
+  .editor-left-panel.m-active, .editor-center-panel.m-active, .editor-right-panel.m-active { display: flex; }
+
+  /* Lưới thẻ game/mẫu: 2 cột tablet */
+  .games-grid, .templates-grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)) !important; }
+}
+
+/* Mặc định ẩn tab mobile trên desktop */
+.editor-mobile-tabs { display: none; }
+
+/* Mặc định ẩn nút menu mobile trên desktop */
+#btn-mobile-menu { display: none; }
+
+/* ---------- Điện thoại ≤640px ---------- */
+@media (max-width: 640px) {
+  .view-container { padding: var(--space-3); }
+  .view-container.no-padding { padding: 0; }
+
+  h1, .view-header h1 { font-size: 20px !important; }
+
+  /* Bảng dự án: cuộn ngang, chữ gọn */
+  .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .table { min-width: 560px; font-size: 13px; }
+  .table th, .table td { padding: 8px 10px; }
+
+  /* Thẻ: 1 cột (ghi đè lưới auto-fill inline) */
+  .games-grid, .templates-grid { grid-template-columns: 1fr !important; }
+  .view-container [style*="auto-fill"] { grid-template-columns: 1fr !important; }
+
+  /* Modal thành sheet toàn màn hình */
+  .modal-backdrop { padding: 0; align-items: flex-end; }
+  .modal-content { max-width: 100%; max-height: 94vh; border-radius: 16px 16px 0 0; }
+  .modal-header, .modal-body { padding-left: var(--space-4); padding-right: var(--space-4); }
+  .modal-footer { flex-wrap: wrap; }
+  .modal-footer .btn { flex: 1; min-height: 44px; }
+
+  /* Toast full-width dưới cùng */
+  .toast-container { left: var(--space-3); right: var(--space-3); bottom: var(--space-3); }
+  .toast { min-width: 0; max-width: none; width: 100%; }
+
+  /* Game viewport tràn viền, header/footer gọn */
+  .game-viewport { border-radius: 0; box-shadow: none; }
+  .game-header, .game-footer { padding: 10px 12px; gap: 8px; flex-wrap: wrap; }
+  .game-body { padding: 16px 12px; }
+
+  /* Command palette */
+  .cmd-palette { max-width: 100%; }
+
+  /* Editor toolbar gọn trên điện thoại */
+  #inp-editor-proj-name { max-width: 130px !important; font-size: 13px !important; }
+  #editor-save-status { display: none; }
+  .editor-toolbar .btn { padding: 6px 10px; font-size: 13px; }
+}
+
+/* ---------- Điện thoại nhỏ ≤420px ---------- */
+@media (max-width: 420px) {
+  .app-topbar { gap: var(--space-2); }
+  #btn-theme-toggle { display: none; }
+  .btn { white-space: normal; text-align: center; }
+  .editor-workspace { height: calc(100% - 120px); }
+}
+
+/* ---------- Cảm ứng: mục tiêu chạm ≥44px ---------- */
+@media (pointer: coarse) {
+  .btn-sm { min-height: 36px; }
+  .btn, .btn-lg { min-height: 44px; }
+  .btn-icon { min-width: 40px; min-height: 40px; }
+  .nav-item { min-height: 44px; }
+  .tab-btn { min-height: 44px; }
+  .game-option-btn { min-height: 52px; font-size: 17px; }
+  .switch { width: 46px; height: 26px; }
+  .switch-slider:before { height: 20px; width: 20px; }
+  .switch input:checked + .switch-slider:before { transform: translateX(20px); }
+}
+
+/* ---------- Màn hình lớn ≥1400px: không gian thoáng ---------- */
+@media (min-width: 1400px) {
+  .view-container { padding: var(--space-8); max-width: 1440px; margin: 0 auto; width: 100%; }
+  .editor-left-panel { width: 400px; }
+  .editor-right-panel { width: 360px; }
+}
+
+/* ---------- Giảm chuyển động: áp dụng cả animation game ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .game-viewport * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}

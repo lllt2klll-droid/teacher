@@ -77,7 +77,7 @@ export const App = {
         <!-- Topbar (Section 6.3) -->
         <header class="app-topbar">
           <div class="topbar-left">
-            <button class="btn btn-icon" id="btn-mobile-menu" style="display: none;">
+            <button class="btn btn-icon" id="btn-mobile-menu" title="Mở menu" aria-label="Mở menu">
               ${Icons.get('menu')}
             </button>
             <button class="topbar-search-btn" id="btn-topbar-search">
@@ -151,6 +151,36 @@ export const App = {
         toggleSidebarBtn.querySelector('.nav-label').textContent = isCollapsed ? 'Mở rộng' : 'Thu gọn';
       };
     }
+
+    // Menu mobile: ngăn kéo + nền mờ, đóng khi chọn mục hoặc bấm Esc
+    const mobileMenuBtn = document.getElementById('btn-mobile-menu');
+    const closeMobileSidebar = () => {
+      sidebar.classList.remove('mobile-open');
+      const bd = document.querySelector('.sidebar-backdrop');
+      if (bd) bd.remove();
+    };
+    if (mobileMenuBtn) {
+      mobileMenuBtn.onclick = () => {
+        const opening = !sidebar.classList.contains('mobile-open');
+        if (opening) {
+          sidebar.classList.add('mobile-open');
+          const bd = document.createElement('div');
+          bd.className = 'sidebar-backdrop';
+          bd.onclick = closeMobileSidebar;
+          document.body.appendChild(bd);
+        } else {
+          closeMobileSidebar();
+        }
+      };
+    }
+    sidebar.querySelectorAll('.nav-item').forEach(item => {
+      item.addEventListener('click', () => {
+        if (window.innerWidth <= 860) closeMobileSidebar();
+      });
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeMobileSidebar();
+    });
 
     const searchBtn = document.getElementById('btn-topbar-search');
     if (searchBtn) {

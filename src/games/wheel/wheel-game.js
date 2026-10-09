@@ -31,7 +31,7 @@ export class WheelGame extends BaseGame {
 
       <div class="game-body" style="display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; width: 100%;">
         
-        <div style="position: relative; width: 340px; height: 340px;">
+        <div style="position: relative; width: min(340px, 100%); aspect-ratio: 1 / 1;">
           <!-- Pointer -->
           <div style="position: absolute; top: -12px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 14px solid transparent; border-right: 14px solid transparent; border-top: 24px solid #B45454; z-index: 10;"></div>
           
