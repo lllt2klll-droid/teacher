@@ -154,6 +154,46 @@ export const ContentEngine = {
         break;
       }
 
+      case 'connect': {
+        result.convertedContent.pairs = questions.slice(0, 4).map(q => ({
+          left: q.question,
+          right: q.answers && q.answers[q.correctAnswer] ? q.answers[q.correctAnswer] : ''
+        }));
+        if (questions.length > 4) {
+          result.warnings.push('Trò chơi Nối ý dùng 4 cặp đầu tiên cho vừa khung nối.');
+        }
+        break;
+      }
+
+      case 'drag-drop': {
+        // Quy uoc: phuong an = ten nhom. Can it nhat 2 nhom khac nhau.
+        const groups = [];
+        questions.forEach(q => {
+          (q.answers || []).forEach(a => {
+            const name = String(a || '').trim();
+            if (name && groups.indexOf(name) < 0) groups.push(name);
+          });
+        });
+        result.convertedContent.pairs = questions.slice(0, 8).map(q => ({
+          left: q.question,
+          right: q.answers && q.answers[q.correctAnswer] ? q.answers[q.correctAnswer] : ''
+        }));
+        if (groups.length < 2) {
+          result.warnings.push('Kéo thả cần phương án là tên nhóm (VD: "Động vật" | "Thực vật", đáp án = nhóm đúng). Hãy sửa phương án thành tên nhóm.');
+        } else if (groups.length > 4) {
+          result.warnings.push('Kéo thả hỗ trợ tối đa 4 nhóm; các nhóm thừa sẽ bị gộp, nên dùng 2-3 nhóm.');
+        } else {
+          result.warnings.push('Kéo thả dùng 8 mục đầu, chia theo nhóm trong phương án.');
+        }
+        break;
+      }
+
+      case 'crossword': {
+        // Tu khoa = dap an dung (tu bo dau khi cham)
+        result.warnings.push('Ô chữ lấy đáp án đúng làm từ khóa (tự bỏ dấu khi chấm). Câu nào đáp án dài quá 12 ký tự sẽ bị bỏ qua.');
+        break;
+      }
+
       case 'wheel': {
         // Options for the wheel
         result.convertedContent.wheelOptions = questions.map(q => q.question);

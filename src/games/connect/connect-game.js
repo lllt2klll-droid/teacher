@@ -4,14 +4,17 @@
 
 import { BaseGame } from '../base-game.js';
 import { Sound } from '../audio-synth.js';
+import { pairsFromContent } from '../pairs-helper.js';
 
 export class ConnectGame extends BaseGame {
   start() {
-    this.pairs = [
-      { id: 1, left: 'Thủ đô Hà Nội', right: 'Việt Nam' },
-      { id: 2, left: 'Thủ đô Tokyo', right: 'Nhật Bản' },
-      { id: 3, left: 'Thủ đô Paris', right: 'Pháp' },
-      { id: 4, left: 'Thủ đô Washington D.C', right: 'Hoa Kỳ' }
+    // Doc cap noi tu content GV (pairs hoac cau hoi -> dap an dung), giong ban xuat.
+    const derived = pairsFromContent(this.content, 4);
+    this.pairs = derived.length > 0 ? derived : [
+      { id: 0, left: 'Thủ đô Hà Nội', right: 'Việt Nam' },
+      { id: 1, left: 'Thủ đô Tokyo', right: 'Nhật Bản' },
+      { id: 2, left: 'Thủ đô Paris', right: 'Pháp' },
+      { id: 3, left: 'Thủ đô Washington D.C', right: 'Hoa Kỳ' }
     ];
 
     this.leftList = [...this.pairs].sort(() => Math.random() - 0.5);

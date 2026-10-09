@@ -76,6 +76,8 @@ export const HelpView = {
             <li><strong>Đọc to:</strong> mỗi câu hỏi trong game có nút <strong>🔊 Đọc</strong> (giọng Việt). Bật/tắt trong Thiết kế & Cài đặt → Nút đọc to câu hỏi.</li>
             <li><strong>Từ Word/Excel:</strong> bôi đen bảng câu hỏi trong Word/Excel → Copy → dán thẳng vào <strong>Nhập nhanh</strong> (máy tự tách cột TAB). Hoặc tải file <strong>.csv</strong> lên, có sẵn nút tải file mẫu.</li>
             <li><strong>Danh sách lớp:</strong> tab <strong>👩‍🏫 Danh sách lớp</strong> trong Nhập nhanh — mỗi dòng 1 tên, dùng cho Vòng quay gọi tên.</li>
+            <li><strong>Kéo thả phân loại:</strong> soạn theo quy ước <em>mục → nhóm</em>: câu hỏi là tên mục, các phương án là tên nhóm (tối đa 4 nhóm), đáp án đúng là nhóm chứa mục đó. Ví dụ: <code>Gà | Động vật | Thực vật | A</code>.</li>
+            <li><strong>Ô chữ:</strong> đáp án đúng của mỗi câu chính là từ khóa (máy tự bỏ dấu khi chấm, HS gõ không dấu). Nối ý/Ghép đôi: câu hỏi → đáp án đúng thành 1 cặp.</li>
           </ul>
         </div>
 

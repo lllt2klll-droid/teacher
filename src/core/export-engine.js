@@ -193,7 +193,7 @@ export const ExportEngine = {
         .replace(/"/g, '&quot;');
     }
     function norm(s) {
-      return String(s || '').normalize('NFD').replace(/[\\u0300-\\u036f]/g, '')
+      return String(s || '').replace(/Đ/g, 'D').replace(/đ/g, 'd').normalize('NFD').replace(/[̀-ͯ]/g, '')
         .replace(/[^A-Za-z0-9]/g, '').toUpperCase();
     }
     function shuffle(a) { a = a.slice(); for (var i = a.length - 1; i > 0; i--) {
@@ -463,13 +463,49 @@ export const ExportEngine = {
         draw();
       }
 
-      /* ---- DRAG-DROP (click-to-place, cảm ứng + chuột) ---- */
+      /* ---- DRAG-DROP (click-to-place, cam ung + chuot) ----
+         Cung logic voi preview: phuong an = ten nhom, dap an dung = nhom
+         chua muc. Toi da 4 nhom, 8 muc. (Dong bo voi pairs-helper.js) */
+      function dragGroups(qs) {
+        qs = (qs || []).slice(0, 8);
+        var ok = qs.length > 0;
+        for (var i = 0; i < qs.length; i++) {
+          var n = 0;
+          for (var j = 0; j < ((qs[i].answers || []).length); j++) {
+            if (String(qs[i].answers[j] || '').trim()) n++;
+          }
+          if (n < 2) ok = false;
+        }
+        if (!ok) return null;
+        var groups = [];
+        for (var a = 0; a < qs.length; a++) {
+          var arr = qs[a].answers || [];
+          for (var b = 0; b < arr.length; b++) {
+            var nm = String(arr[b] || '').trim();
+            if (nm && groups.indexOf(nm) < 0) groups.push(nm);
+          }
+        }
+        if (groups.length < 2 || groups.length > 4) return null;
+        var cats = groups.map(function (t, i) { return { id: 'cat_' + i, t: t }; });
+        var items = qs.map(function (q, i) {
+          var tg = String((q.answers || [])[q.correctAnswer] || '').trim();
+          var gi = groups.indexOf(tg);
+          if (gi < 0) gi = 0;
+          return { id: i, text: q.question, cat: 'cat_' + gi };
+        });
+        return { cats: cats, items: items };
+      }
       function runDragDrop() {
-        var pairs = pairsFromContent(6);
-        if (!pairs.length) { finishScreen('Chua co du lieu phan loai'); return; }
-        var half = Math.max(1, Math.ceil(pairs.length / 2));
-        var cats = [{ id: 'A', t: 'Nhom 1' }, { id: 'B', t: 'Nhom 2' }];
-        var items = pairs.map(function (p, i) { return { id: p.id, text: p.left, cat: i < half ? 'A' : 'B' }; });
+        var g = dragGroups(questions);
+        var cats, items;
+        if (g) { cats = g.cats; items = g.items; }
+        else if (questions.length) {
+          var pairs = pairsFromContent(8);
+          var half = Math.max(1, Math.ceil(pairs.length / 2));
+          cats = [{ id: 'A', t: 'Nhom 1' }, { id: 'B', t: 'Nhom 2' }];
+          items = pairs.map(function (p, i) { return { id: p.id, text: p.left, cat: i < half ? 'A' : 'B' }; });
+        }
+        else { finishScreen('Chua co du lieu phan loai'); return; }
         items = shuffle(items);
         var picked = null, placed = 0;
         function draw() {
@@ -485,7 +521,7 @@ export const ExportEngine = {
               var inside = items.filter(function (x) { return x.done && x.cat === c.id; })
                 .map(function (x) { return '<span class="drag-chip" style="background:#4D7A5A;">✓ ' + esc(x.text) + '</span>'; }).join('');
               return '<div class="drop-box" data-cat="' + c.id + '"><div class="font-semibold" style="margin-bottom:8px;">' +
-                esc(c.t) + ' (' + pairs.filter(function (p, i) { return (i < half ? 'A' : 'B') === c.id; }).length + ' muc)</div>' +
+                esc(c.t) + ' (' + items.filter(function (x) { return x.cat === c.id; }).length + ' muc)</div>' +
                 '<div style="display:flex;gap:8px;flex-wrap:wrap;">' + inside + '</div>' +
                 '<button class="btn btn-secondary btn-sm" data-drop="' + c.id + '" style="margin-top:12px;">Chon nhom nay</button></div>';
             }).join('') + '</div></div>' + footer('Cham 1 the roi cham nhom dich');

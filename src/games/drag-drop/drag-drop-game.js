@@ -5,22 +5,32 @@
 
 import { BaseGame } from '../base-game.js';
 import { Sound } from '../audio-synth.js';
+import { dragGroupsFromContent } from '../pairs-helper.js';
 
 export class DragDropGame extends BaseGame {
   start() {
-    this.categories = [
-      { id: 'cat_a', title: 'Nhóm 1: Động vật', acceptedKeywords: ['Gà', 'Chó', 'Mèo', 'Bò', 'Chim', 'Cá'] },
-      { id: 'cat_b', title: 'Nhóm 2: Thực vật', acceptedKeywords: ['Cây bàng', 'Hoa sen', 'Cây lúa', 'Cỏ', 'Hoa hồng'] }
-    ];
+    // Doc content that cua GV: phuong an = ten nhom, dap an dung = nhom chua muc.
+    // VD: muc "Ga" | nhom "Dong vat" | nhom "Thuc vat" | dap an A.
+    const derived = dragGroupsFromContent(this.content, 8);
+    if (derived) {
+      this.categories = derived.cats;
+      this.items = derived.items.sort(() => Math.random() - 0.5);
+    } else {
+      // Demo khi chua co du lieu nhom (giup GV hieu cach choi ngay)
+      this.categories = [
+        { id: 'cat_a', title: 'Nhóm 1: Động vật', acceptedKeywords: ['Gà', 'Chó', 'Mèo', 'Bò', 'Chim', 'Cá'] },
+        { id: 'cat_b', title: 'Nhóm 2: Thực vật', acceptedKeywords: ['Cây bàng', 'Hoa sen', 'Cây lúa', 'Cỏ', 'Hoa hồng'] }
+      ];
 
-    this.items = [
-      { id: 1, text: 'Gà', targetCat: 'cat_a' },
-      { id: 2, text: 'Hoa sen', targetCat: 'cat_b' },
-      { id: 3, text: 'Mèo', targetCat: 'cat_a' },
-      { id: 4, text: 'Cây lúa', targetCat: 'cat_b' },
-      { id: 5, text: 'Chó', targetCat: 'cat_a' },
-      { id: 6, text: 'Cây bàng', targetCat: 'cat_b' }
-    ].sort(() => Math.random() - 0.5);
+      this.items = [
+        { id: 1, text: 'Gà', targetCat: 'cat_a' },
+        { id: 2, text: 'Hoa sen', targetCat: 'cat_b' },
+        { id: 3, text: 'Mèo', targetCat: 'cat_a' },
+        { id: 4, text: 'Cây lúa', targetCat: 'cat_b' },
+        { id: 5, text: 'Chó', targetCat: 'cat_a' },
+        { id: 6, text: 'Cây bàng', targetCat: 'cat_b' }
+      ].sort(() => Math.random() - 0.5);
+    }
 
     this.placedCount = 0;
     this.score = 0;

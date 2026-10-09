@@ -21,11 +21,13 @@ export class QuizGame extends BaseGame {
 
   renderCurrentQuestion() {
     this.stopTimer();
+    this.unbindKeyboard();
     const q = this.questions[this.currentQuestionIndex];
     if (!q) {
       this.finish();
       return;
     }
+    this._locked = false;
 
     const totalQ = this.questions.length;
     const qNum = this.currentQuestionIndex + 1;
@@ -72,6 +74,7 @@ export class QuizGame extends BaseGame {
     // Bind click handlers
     const optionBtns = this.viewportEl.querySelectorAll('.game-option-btn');
     bindSpeakButtons(this.viewportEl);
+    this.bindKeyboard(q, optionBtns.length);
     optionBtns.forEach(btn => {
       btn.onclick = () => {
         const idx = parseInt(btn.getAttribute('data-index'), 10);
@@ -107,7 +110,29 @@ export class QuizGame extends BaseGame {
     }
   }
 
+  bindKeyboard(q, optionCount) {
+    this.keyHandler = (e) => {
+      if (this.state !== 'playing' || this._locked) return;
+      if (e.target && /INPUT|TEXTAREA/.test(e.target.tagName)) return;
+      const map = { 1: 0, 2: 1, 3: 2, 4: 3, a: 0, b: 1, c: 2, d: 3 };
+      const idx = map[String(e.key).toLowerCase()];
+      if (idx !== undefined && idx < optionCount) {
+        this.handleAnswer(idx, q);
+      }
+    };
+    window.addEventListener('keydown', this.keyHandler);
+  }
+
+  unbindKeyboard() {
+    if (this.keyHandler) {
+      window.removeEventListener('keydown', this.keyHandler);
+      this.keyHandler = null;
+    }
+  }
+
   handleAnswer(selectedIndex, q) {
+    if (this._locked) return;
+    this._locked = true;
     this.stopTimer();
     const isCorrect = selectedIndex === q.correctAnswer;
     const optionBtns = this.viewportEl.querySelectorAll('.game-option-btn');
@@ -143,5 +168,10 @@ export class QuizGame extends BaseGame {
       this.currentQuestionIndex++;
       this.renderCurrentQuestion();
     }, this.options.showExplanation && q.explanation ? 2400 : 1200);
+  }
+
+  destroy() {
+    this.unbindKeyboard();
+    super.destroy();
   }
 }

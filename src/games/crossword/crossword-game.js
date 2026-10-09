@@ -4,10 +4,13 @@
 
 import { BaseGame } from '../base-game.js';
 import { Sound } from '../audio-synth.js';
+import { crosswordWordsFromContent, normText } from '../pairs-helper.js';
 
 export class CrosswordGame extends BaseGame {
   start() {
-    this.words = [
+    // Doc tu khoa tu content GV (words hoac dap an dung), giong ban xuat.
+    const derived = crosswordWordsFromContent(this.content, 8);
+    this.words = derived.length > 0 ? derived : [
       { id: 1, clue: 'Thủ đô ngàn năm văn hiến của Việt Nam (5 chữ cái)', answer: 'HANOI' },
       { id: 2, clue: 'Màu cờ Tổ quốc Việt Nam (2 chữ cái)', answer: 'DO' },
       { id: 3, clue: 'Quốc hoa của Việt Nam (3 chữ cái)', answer: 'SEN' }
@@ -40,9 +43,9 @@ export class CrosswordGame extends BaseGame {
                 Hàng ${idx + 1}: ${item.clue}
               </div>
               <div class="flex items-center gap-3">
-                <input type="text" class="input crossword-input" data-id="${item.id}" 
-                  maxlength="${item.answer.length}" 
-                  placeholder="${item.answer.length} ký tự" 
+                <input type="text" class="input crossword-input" data-id="${item.id}"
+                  maxlength="${item.answer.length + 4}"
+                  placeholder="${item.answer.length} ký tự"
                   style="text-transform: uppercase; font-weight: 700; letter-spacing: 4px; font-size: 18px; max-width: 220px;"
                   ${this.solved.has(item.id) ? `value="${item.answer}" disabled` : ''}>
                 <button class="btn btn-primary btn-sm check-word-btn" data-id="${item.id}" ${this.solved.has(item.id) ? 'disabled' : ''}>
@@ -72,8 +75,8 @@ export class CrosswordGame extends BaseGame {
         const input = this.viewportEl.querySelector(`.crossword-input[data-id="${id}"]`);
         if (!input || !item) return;
 
-        const val = input.value.trim().toUpperCase();
-        if (val === item.answer) {
+        const val = normText(input.value);
+        if (val === normText(item.answer) && val.length > 0) {
           Sound.playCorrect();
           this.solved.add(id);
           this.score += 20;

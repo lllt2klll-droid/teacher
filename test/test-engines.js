@@ -175,6 +175,49 @@ assert(!layoutCss.includes('left: -240px'), 'Đã xóa hack sidebar cũ, dùng h
 const themesCss = fs.readFileSync('src/styles/themes.css', 'utf-8');
 assert(themesCss.includes('clamp(') && themesCss.includes('gvPop'), 'Game có chữ clamp() + animation phản hồi');
 
+// 10. Dot 1: content that, phim tat, o chu chuan hoa
+console.log('\n10. Kiem tra Dot 1 (Keo tha/Noi y/Phim/O chu):');
+const PH = await import('../src/games/pairs-helper.js');
+assert(PH.normText('Việt Nam') === 'VIETNAM', 'normText bo dau tieng Viet');
+assert(PH.normText('ĐỎ') === 'DO' && PH.normText('ve sầu') === 'VESAU', 'normText xu ly Đ/đ, dau, cach');
+const grpContent = { questions: [
+  { question: 'Gà', answers: ['Động vật', 'Thực vật'], correctAnswer: 0 },
+  { question: 'Hoa sen', answers: ['Động vật', 'Thực vật'], correctAnswer: 1 }
+]};
+const groups = PH.dragGroupsFromContent(grpContent, 8);
+assert(groups && groups.cats.length === 2 && groups.items[0].targetCat === 'cat_0', 'Suy 2 nhom Keo tha tu phuong an');
+assert(PH.dragGroupsFromContent({ questions: [] }) === null, 'Thieu du lieu -> null de dung demo');
+assert(PH.dragGroupsFromContent({ questions: [{ question: 'A?', answers: ['X', 'Y', 'Z', 'W', 'V'], correctAnswer: 0 }] }) === null, 'Qua 4 nhom -> null');
+const prs = PH.pairsFromContent({ pairs: [{ left: 'A', right: 'B' }] }, 4);
+assert(prs.length === 1 && prs[0].left === 'A', 'Uu tien content.pairs khi co');
+const prsQ = PH.pairsFromContent({ questions: [{ question: 'Hanoi?', answers: ['VN', 'Lao'], correctAnswer: 0 }] }, 4);
+assert(prsQ[0].right === 'VN', 'Suy cap tu dap an dung');
+const cw = PH.crosswordWordsFromContent({ questions: [{ question: 'Mau co?', answers: ['Đỏ', 'Xanh'], correctAnswer: 0 }] });
+assert(cw.length === 1 && cw[0].answer === 'DO', 'Tu khoa o chu suy tu dap an + chuan hoa Đ');
+const cwLong = PH.crosswordWordsFromContent({ questions: [{ question: 'Q?', answers: ['Mot dap an rat dai khong hop le', 'B'], correctAnswer: 0 }] });
+assert(cwLong.length === 0, 'Bo tu khoa qua 12 ky tu');
+const convDrag = ContentEngine.convertContentForGame({ questions: grpContent.questions }, 'drag-drop');
+assert(convDrag.compatible && convDrag.convertedContent.pairs.length === 2, 'Convert sang Keo tha giu cap');
+const convConn = ContentEngine.convertContentForGame({ questions: [1, 2, 3, 4, 5].map(i => ({ question: 'Q' + i, answers: ['A', 'B'], correctAnswer: 0 })) }, 'connect');
+assert(convConn.convertedContent.pairs.length === 4, 'Noi y lay 4 cap dau');
+const convCw = ContentEngine.convertContentForGame({ questions: grpContent.questions }, 'crossword');
+assert(convCw.compatible === true, 'Convert sang O chu tuong thich');
+const dragSrc = fs.readFileSync('src/games/drag-drop/drag-drop-game.js', 'utf-8');
+assert(dragSrc.includes('dragGroupsFromContent'), 'Keo tha preview doc content that');
+const connSrc = fs.readFileSync('src/games/connect/connect-game.js', 'utf-8');
+assert(connSrc.includes('pairsFromContent'), 'Noi y preview doc content that');
+const quizSrc = fs.readFileSync('src/games/quiz/quiz-game.js', 'utf-8');
+assert(quizSrc.includes('bindKeyboard') && quizSrc.includes('_locked') && quizSrc.includes('destroy()'), 'Quiz co phim 1-4 + chong an điem trung');
+const wheelSrc = fs.readFileSync('src/games/wheel/wheel-game.js', 'utf-8');
+assert(wheelSrc.includes("e.key === ' '") && wheelSrc.includes('unbindKeyboard'), 'Vong quay co phim Space + don phim');
+const cwSrc = fs.readFileSync('src/games/crossword/crossword-game.js', 'utf-8');
+assert(cwSrc.includes('crosswordWordsFromContent') && cwSrc.includes('normText(input.value)'), 'O chu doc words + cham chuan hoa');
+const expSrc = fs.readFileSync('src/core/export-engine.js', 'utf-8');
+assert(expSrc.includes('/Đ/g'), 'File xuat xu ly Đ khi chuan hoa');
+assert(expSrc.includes('function dragGroups'), 'File xuat Keo tha dung logic nhom nhu preview');
+const expDrag = ExportEngine.generateStandaloneHtml({ name: 'Phan loai', gameType: 'drag-drop', themeId: 'nature' }, grpContent, 'standalone');
+assert(expDrag.includes('dragGroups'), 'HTML Keo tha xuat chua logic nhom');
+
 console.log(`\n========================================`);
 console.log(`KẾT QUẢ: Đã vượt qua ${passed} kiểm thử, Thất bại: ${failed}`);
 if (failed > 0) process.exit(1);

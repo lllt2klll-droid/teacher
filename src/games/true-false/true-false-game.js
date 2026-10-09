@@ -18,6 +18,7 @@ export class TrueFalseGame extends BaseGame {
   }
 
   bindKeyboard() {
+    this.unbindKeyboard();
     this.keyHandler = (e) => {
       if (this.state !== 'playing') return;
       if (e.key === 'ArrowLeft' || e.key === '1') {
@@ -29,6 +30,13 @@ export class TrueFalseGame extends BaseGame {
     window.addEventListener('keydown', this.keyHandler);
   }
 
+  unbindKeyboard() {
+    if (this.keyHandler) {
+      window.removeEventListener('keydown', this.keyHandler);
+      this.keyHandler = null;
+    }
+  }
+
   renderCurrentQuestion() {
     const q = this.questions[this.currentQuestionIndex];
     if (!q) {
@@ -38,6 +46,7 @@ export class TrueFalseGame extends BaseGame {
 
     const totalQ = this.questions.length;
     const qNum = this.currentQuestionIndex + 1;
+    this._locked = false;
 
     this.viewportEl.innerHTML = `
       <div class="game-header">
@@ -77,6 +86,8 @@ export class TrueFalseGame extends BaseGame {
   }
 
   selectAnswer(choice) {
+    if (this._locked || this.state !== 'playing') return;
+    this._locked = true;
     const q = this.questions[this.currentQuestionIndex];
     if (!q) return;
 
@@ -107,9 +118,7 @@ export class TrueFalseGame extends BaseGame {
   }
 
   destroy() {
+    this.unbindKeyboard();
     super.destroy();
-    if (this.keyHandler) {
-      window.removeEventListener('keydown', this.keyHandler);
-    }
   }
 }
