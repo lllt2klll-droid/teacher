@@ -35,11 +35,11 @@ export function pairsFromContent(content, max = 6) {
 // Classification groups for Drag & Drop. Returns null when the content
 // is not group-shaped -> caller falls back to demo data.
 export function dragGroupsFromContent(content, maxItems = 8) {
-  const qs = ((content && content.questions) || []).slice(0, maxItems);
+  const raw = ((content && content.questions) || []).slice(0, maxItems);
+  if (!raw.length) return null;
+  // Lọc câu hỏng thay vì vứt cả bộ: giữ câu có >= 2 phương án + có tên mục
+  const qs = raw.filter(q => Array.isArray(q.answers) && q.answers.filter(a => String(a || '').trim()).length >= 2 && String(q.question || '').trim());
   if (!qs.length) return null;
-  // Convention: every question needs >= 2 options (group names)
-  const usable = qs.every(q => Array.isArray(q.answers) && q.answers.filter(a => String(a || '').trim()).length >= 2);
-  if (!usable) return null;
   const groups = [];
   qs.forEach(q => {
     (q.answers || []).forEach(a => {
@@ -60,7 +60,13 @@ export function dragGroupsFromContent(content, maxItems = 8) {
 
 // Crossword keywords from content.words (if any) or teacher correct answers
 export function crosswordWordsFromContent(content, max = 8) {
-  if (content && content.words && content.words.length) return content.words.slice(0, max);
+  if (content && content.words && content.words.length) {
+    const seen = new Set();
+    return content.words.slice(0, max)
+      .map((w, i) => ({ id: w.id != null ? w.id : (i + 1), clue: w.clue || w.question || '', answer: normText(w.answer || '') }))
+      .filter(w => w.answer && w.answer.length >= 2 && w.answer.length <= 12)
+      .filter(w => { if (seen.has(w.id)) return false; seen.add(w.id); return true; });
+  }
   const qs = (content && content.questions) || [];
   const words = qs.slice(0, max).map((q, i) => {
     const ans = (q.answers && q.answers[q.correctAnswer]) || '';

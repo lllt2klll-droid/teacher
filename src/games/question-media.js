@@ -10,8 +10,12 @@ export function escHtml(s) {
 // Khung ảnh minh họa câu hỏi (tự ẩn khi không có ảnh)
 export function questionImageHtml(q, maxHeight = 180) {
   if (!q || !q.image) return '';
+  // Escape " trong src để chống thoát attribute (x" onerror=...)
+  // Chỉ cho phép data:image/* hoặc http(s)://, còn lại bỏ qua
+  const src = String(q.image);
+  if (!/^data:image\//i.test(src) && !/^https?:\/\//i.test(src)) return '';
   return `<div style="margin: 0 auto 16px; text-align: center;">
-    <img src="${q.image}" alt="Minh họa câu hỏi"
+    <img src="${escHtml(src)}" alt="Minh họa câu hỏi"
       style="max-width: 100%; max-height: ${maxHeight}px; border-radius: 12px; border: 2px solid var(--theme-border); object-fit: contain; background: #fff;" />
   </div>`;
 }

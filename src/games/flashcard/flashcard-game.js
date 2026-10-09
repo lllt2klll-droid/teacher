@@ -9,8 +9,9 @@ import { escHtml } from '../question-media.js';
 
 export class FlashcardGame extends BaseGame {
   start() {
-    this.cards = (this.content?.questions || []).map(q => ({
-      front: q.front || q.question,
+    this.cards = (this.content?.questions || []).map((q, i) => ({
+      id: i,
+      front: q.front || q.question || ('Thẻ ' + (i + 1)),
       back: q.back || (q.answers && q.answers[q.correctAnswer]) || q.explanation || 'Đáp án',
       image: q.image || ''
     }));
@@ -23,13 +24,13 @@ export class FlashcardGame extends BaseGame {
       if (this.state !== 'playing') return;
       if (e.target && /INPUT|TEXTAREA/.test(e.target.tagName)) return;
       if (e.key === ' ') {
-        const b = document.getElementById('btn-flip-card');
+        const b = this.viewportEl ? this.viewportEl.querySelector('#btn-flip-card') : null;
         if (b) { e.preventDefault(); b.click(); }
       } else if (e.key === 'ArrowRight') {
-        const n = document.getElementById('btn-next-card');
+        const n = this.viewportEl ? this.viewportEl.querySelector('#btn-next-card') : null;
         if (n) n.click();
       } else if (e.key === 'ArrowLeft') {
-        const p = document.getElementById('btn-prev-card');
+        const p = this.viewportEl ? this.viewportEl.querySelector('#btn-prev-card') : null;
         if (p) p.click();
       }
     });
@@ -60,7 +61,7 @@ export class FlashcardGame extends BaseGame {
             <!-- Front -->
             <div style="position: absolute; width: 100%; height: 100%; -webkit-backface-visibility: hidden; backface-visibility: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; background-color: var(--theme-surface); border-radius: 16px; overflow-y: auto;">
               <span class="badge badge-primary" style="margin-bottom: 12px;">Mặt trước: Thuật ngữ / Câu hỏi</span>
-              ${card.image ? `<img src="${card.image}" alt="Minh họa" style="max-width: 100%; max-height: 110px; border-radius: 8px; margin-bottom: 8px; object-fit: contain; background: #fff;">` : ''}
+              ${card.image ? `<img src="${escHtml(card.image)}" alt="Minh họa" style="max-width: 100%; max-height: 110px; border-radius: 8px; margin-bottom: 8px; object-fit: contain; background: #fff;">` : ''}
               <div style="font-size: 20px; font-weight: 600; color: var(--theme-text);">${escHtml(card.front)}</div>
               <span style="margin-top: 16px; font-size: 12px; color: var(--theme-text-subtle);">👆 Nhấp để lật thẻ</span>
             </div>
@@ -123,10 +124,11 @@ export class FlashcardGame extends BaseGame {
     };
 
     masteredBtn.onclick = () => {
-      // Chi cong diem 1 lan cho moi the (quay lai the cu khong cong nua)
-      if (!this.masteredSet.has(this.currentCardIndex)) {
+      // Chi cong diem 1 lan cho moi the (dùng id thẻ, không dùng index)
+      const cid = this.cards[this.currentCardIndex].id;
+      if (!this.masteredSet.has(cid)) {
         Sound.playCorrect();
-        this.masteredSet.add(this.currentCardIndex);
+        this.masteredSet.add(cid);
         this.score += 10;
       }
       nextBtn.click();
@@ -136,8 +138,13 @@ export class FlashcardGame extends BaseGame {
     if (shuffleBtn) {
       shuffleBtn.onclick = () => {
         Sound.playClick();
-        this.cards = [...this.cards].sort(() => Math.random() - 0.5);
-        this.currentCardIndex = 0;
+        // Giữ nguyên masteredSet theo id nên xáo không sai điểm
+        const curId = this.cards[this.currentCardIndex].id;
+        for (let i = this.cards.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          const t = this.cards[i]; this.cards[i] = this.cards[j]; this.cards[j] = t;
+        }
+        this.currentCardIndex = Math.max(0, this.cards.findIndex(c => c.id === curId));
         this.renderCard();
       };
     }

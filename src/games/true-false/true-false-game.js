@@ -5,11 +5,14 @@
 import { BaseGame } from '../base-game.js';
 import { Sound } from '../audio-synth.js';
 import { bindSpeakButtons } from '../../core/speech.js';
-import { questionImageHtml, questionTextRow, teacherBadgeHtml } from '../question-media.js';
+import { questionImageHtml, questionTextRow, teacherBadgeHtml, escHtml } from '../question-media.js';
 
 export class TrueFalseGame extends BaseGame {
   start() {
-    this.questions = this.content?.questions || [];
+    this.questions = (this.content?.questions || []).map(q => ({
+      ...q,
+      correctAnswer: (q.correctAnswer === 1) ? 1 : 0
+    }));
     this.currentQuestionIndex = 0;
     this.score = 0;
     this.streak = 0;
@@ -21,7 +24,8 @@ export class TrueFalseGame extends BaseGame {
 
   bindKeyboard() {
     this.bindKey((e) => {
-      if (this.state !== 'playing') return;
+      if (this.state !== 'playing' || this._locked) return;
+      if (e.target && /INPUT|TEXTAREA/.test(e.target.tagName)) return;
       if (e.key === 'ArrowLeft' || e.key === '1') {
         this.selectAnswer(0);
       } else if (e.key === 'ArrowRight' || e.key === '2') {
@@ -31,6 +35,7 @@ export class TrueFalseGame extends BaseGame {
   }
 
   renderCurrentQuestion() {
+    this.clearGameTimeouts();
     const q = this.questions[this.currentQuestionIndex];
     if (!q) {
       this.finish();
@@ -111,12 +116,17 @@ export class TrueFalseGame extends BaseGame {
     if (q.explanation) {
       const box = document.createElement('div');
       box.style.cssText = 'margin-top: 16px; padding: 10px 14px; background: rgba(0,0,0,0.04); border-radius: 8px; font-size: 14px; text-align: left;';
-      box.innerHTML = `<strong>Giải thích:</strong> ${q.explanation}`;
+      const strong = document.createElement('strong');
+      strong.textContent = 'Giải thích: ';
+      const span = document.createElement('span');
+      span.textContent = q.explanation;
+      box.appendChild(strong);
+      box.appendChild(span);
       const body = this.viewportEl.querySelector('.game-body');
       if (body) body.appendChild(box);
     }
 
-    setTimeout(() => {
+    this.gameTimeout(() => {
       this.currentQuestionIndex++;
       this.renderCurrentQuestion();
     }, q.explanation ? 2200 : 1100);

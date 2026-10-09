@@ -5,6 +5,7 @@
 import { BaseGame } from '../base-game.js';
 import { Sound } from '../audio-synth.js';
 import { crosswordWordsFromContent, normText } from '../pairs-helper.js';
+import { escHtml } from '../question-media.js';
 
 export class CrosswordGame extends BaseGame {
   start() {
@@ -41,14 +42,14 @@ export class CrosswordGame extends BaseGame {
           ${this.words.map((item, idx) => `
             <div class="card" style="padding: 16px; border: 2px solid ${this.solved.has(item.id) ? '#4D7A5A' : 'var(--theme-border)'}; background: var(--theme-surface);">
               <div class="font-semibold" style="margin-bottom: 8px;">
-                Hàng ${idx + 1}: ${item.clue}
+                Hàng ${idx + 1}: ${escHtml(item.clue)}
               </div>
               <div class="flex items-center gap-3">
                 <input type="text" class="input crossword-input" data-id="${item.id}"
-                  maxlength="${item.answer.length + 4}"
+                  maxlength="${item.answer.length}"
                   placeholder="${item.answer.length} ký tự"
                   style="text-transform: uppercase; font-weight: 700; letter-spacing: 4px; font-size: 18px; max-width: 220px;"
-                  ${this.solved.has(item.id) ? `value="${item.answer}" disabled` : ''}>
+                  ${this.solved.has(item.id) ? `value="${escHtml(item.answer)}" disabled` : ''}>
                 <button class="btn btn-primary btn-sm check-word-btn" data-id="${item.id}" ${this.solved.has(item.id) ? 'disabled' : ''}>
                   ${this.solved.has(item.id) ? '✓ Đã giải' : 'Kiểm tra'}
                 </button>
@@ -89,13 +90,13 @@ export class CrosswordGame extends BaseGame {
           this.renderCrossword();
 
           if (this.solved.size >= this.words.length) {
-            setTimeout(() => this.finish(), 800);
+            this.gameTimeout(() => this.finish(), 800);
           }
         } else {
           Sound.playWrong();
           input.style.borderColor = '#B45454';
-          setTimeout(() => {
-            input.style.borderColor = 'var(--theme-border)';
+          this.gameTimeout(() => {
+            try { input.style.borderColor = 'var(--theme-border)'; } catch (e) {}
           }, 600);
         }
       };

@@ -4,10 +4,11 @@
 
 import { BaseGame } from '../base-game.js';
 import { Sound } from '../audio-synth.js';
+import { escHtml } from '../question-media.js';
 
 export class WheelGame extends BaseGame {
   start() {
-    const rawOptions = (this.content?.questions || []).map(q => q.question);
+    const rawOptions = (this.content?.questions || []).map(q => q.question).filter(s => String(s || '').trim());
     this.optionsList = rawOptions.length > 0 ? [...rawOptions] : [
       'Nguyễn Văn An', 'Trần Thị Bình', 'Lê Hoàng Cúc',
       'Phạm Minh Đức', 'Vũ Ngọc Hân', 'Hoàng Quốc Khánh',
@@ -64,7 +65,7 @@ export class WheelGame extends BaseGame {
         </div>
         ${this.history.length ? `
           <div style="margin-top: 12px; font-size: 13px; color: var(--theme-text-subtle); max-width: 420px;">
-            Đã quay trúng: ${this.history.map(h => `<span class="badge" style="margin: 2px;">${h}</span>`).join('')}
+            Đã quay trúng: ${this.history.map(h => `<span class="badge" style="margin: 2px;">${escHtml(h)}</span>`).join('')}
           </div>
         ` : ''}
 
@@ -95,7 +96,9 @@ export class WheelGame extends BaseGame {
 
     removeBtn.onclick = () => {
       if (this.selectedItem && this.optionsList.includes(this.selectedItem)) {
-        this.optionsList = this.optionsList.filter(o => o !== this.selectedItem);
+        // Chỉ bỏ 1 mục (lần xuất hiện đầu), không xóa hết mục trùng tên
+        const ix = this.optionsList.indexOf(this.selectedItem);
+        if (ix >= 0) this.optionsList.splice(ix, 1);
         this.selectedItem = null;
         removeBtn.style.display = 'none';
         const banner = this.viewportEl.querySelector('#wheel-result-banner');
@@ -113,6 +116,12 @@ export class WheelGame extends BaseGame {
     const doAdd = () => {
       const name = (addInp.value || '').trim().slice(0, 30);
       if (!name) return;
+      // Chống trùng tên gây lệch xác suất
+      if (this.optionsList.some(o => o.toLowerCase() === name.toLowerCase())) {
+        addInp.value = '';
+        addInp.placeholder = 'Tên này đã có rồi!';
+        return;
+      }
       Sound.playClick();
       this.optionsList.push(name);
       this.selectedItem = null;
@@ -185,6 +194,7 @@ export class WheelGame extends BaseGame {
   }
 
   spinWheel() {
+    if (this.optionsList.length === 0) return;
     this.isSpinning = true;
     Sound.playClick();
     const banner = this.viewportEl.querySelector('#wheel-result-banner');
@@ -201,6 +211,8 @@ export class WheelGame extends BaseGame {
     let lastTickAngle = this.currentAngle;
 
     const animate = (time) => {
+      // Đã destroy / chuyển game thì dừng hẳn
+      if (!this.viewportEl || !this.viewportEl.isConnected) { this.isSpinning = false; return; }
       const elapsed = time - startTime;
       const progress = Math.min(elapsed / duration, 1);
       // Ease out cubic
@@ -208,7 +220,7 @@ export class WheelGame extends BaseGame {
       this.currentAngle = startAngle + (targetAngle - startAngle) * ease;
 
       // Tick sound every slice threshold
-      const sliceSize = (2 * Math.PI) / this.optionsList.length;
+      const sliceSize = (2 * Math.PI) / Math.max(1, this.optionsList.length);
       if (Math.abs(this.currentAngle - lastTickAngle) >= sliceSize) {
         Sound.playWheelTick();
         lastTickAngle = this.currentAngle;
@@ -217,7 +229,7 @@ export class WheelGame extends BaseGame {
       this.drawWheel();
 
       if (progress < 1) {
-        requestAnimationFrame(animate);
+        this.gameRAF(animate);
       } else {
         this.isSpinning = false;
         Sound.playCheer();
@@ -225,11 +237,17 @@ export class WheelGame extends BaseGame {
       }
     };
 
-    requestAnimationFrame(animate);
+    this.gameRAF(animate);
+  }
+
+  destroy() {
+    this.isSpinning = false;
+    super.destroy();
   }
 
   onSpinComplete() {
     const num = this.optionsList.length;
+    if (!num) return;
     const arc = (2 * Math.PI) / num;
     // Pointer is at top: 3*PI/2 (270 degrees)
     const normalizedAngle = (1.5 * Math.PI - (this.currentAngle % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
@@ -242,7 +260,13 @@ export class WheelGame extends BaseGame {
     const banner = this.viewportEl.querySelector('#wheel-result-banner');
     const removeBtn = this.viewportEl.querySelector('#btn-remove-picked');
     if (banner) {
-      banner.innerHTML = `🎉 Kết quả: <strong>${this.selectedItem}</strong>`;
+      banner.textContent = '';
+      const t = document.createElement('span');
+      t.textContent = '🎉 Kết quả: ';
+      const s = document.createElement('strong');
+      s.textContent = this.selectedItem ?? '';
+      banner.appendChild(t);
+      banner.appendChild(s);
     }
     if (removeBtn) {
       removeBtn.style.display = 'inline-flex';
@@ -256,6 +280,6 @@ export class WheelGame extends BaseGame {
       const body = this.viewportEl.querySelector('.game-body');
       if (body) body.appendChild(histEl);
     }
-    histEl.innerHTML = `Đã quay trúng: ${this.history.map(h => `<span class="badge" style="margin: 2px;">${h}</span>`).join('')}`;
+    histEl.innerHTML = `Đã quay trúng: ${this.history.map(h => `<span class="badge" style="margin: 2px;">${escHtml(h)}</span>`).join('')}`;
   }
 }

@@ -5,7 +5,7 @@
 import { BaseGame } from '../base-game.js';
 import { Sound } from '../audio-synth.js';
 import { bindSpeakButtons } from '../../core/speech.js';
-import { questionImageHtml, teacherBadgeHtml } from '../question-media.js';
+import { questionImageHtml, teacherBadgeHtml, escHtml } from '../question-media.js';
 
 export class TugOfWarGame extends BaseGame {
   start() {
@@ -73,15 +73,15 @@ export class TugOfWarGame extends BaseGame {
           ${questionImageHtml(q, 140)}
           ${teacherBadgeHtml(q, this.options.teacherMode)}
           <div style="display: flex; align-items: flex-start; justify-content: center; gap: 8px; margin-bottom: 20px;">
-            <div style="font-size: 20px; font-weight: 600; flex: 1;">${q.question}</div>
-            ${this.options.readAloud !== false ? `<button class="btn btn-secondary btn-sm btn-speak" data-speak="${q.question.replace(/"/g, '&quot;')}" title="Đọc to câu hỏi">🔊</button>` : ''}
+            <div style="font-size: 20px; font-weight: 600; flex: 1;">${escHtml(q.question)}</div>
+            ${this.options.readAloud !== false ? `<button class="btn btn-secondary btn-sm btn-speak" data-speak="${escHtml(q.question)}" title="Đọc to câu hỏi">🔊</button>` : ''}
           </div>
 
           <div class="gv-grid-2" style="gap: 12px;">
             ${(q.answers || []).map((ans, idx) => `
               <button class="game-option-btn tug-opt-btn" data-index="${idx}" style="margin-bottom: 0;">
                 <span class="game-option-letter">${String.fromCharCode(65 + idx)}</span>
-                <span>${ans}</span>
+                <span>${escHtml(ans)}</span>
               </button>
             `).join('')}
           </div>
@@ -96,8 +96,12 @@ export class TugOfWarGame extends BaseGame {
 
     const optBtns = this.viewportEl.querySelectorAll('.tug-opt-btn');
     bindSpeakButtons(this.viewportEl);
+    this._locked = false;
     optBtns.forEach(btn => {
       btn.onclick = () => {
+        if (this._locked) return;
+        this._locked = true;
+        optBtns.forEach(b => { b.disabled = true; });
         const choice = parseInt(btn.getAttribute('data-index'), 10);
         if (choice === q.correctAnswer) {
           Sound.playCorrect();
@@ -120,7 +124,7 @@ export class TugOfWarGame extends BaseGame {
         this.currentTeam = this.currentTeam === 'blue' ? 'red' : 'blue';
         this.currentQIndex++;
 
-        setTimeout(() => this.renderTurn(), 1000);
+        this.gameTimeout(() => { this._locked = false; this.renderTurn(); }, 1000);
       };
     });
   }

@@ -137,7 +137,8 @@ export class TimerGame extends BaseGame {
         this.isRunning = false;
         this.totalSeconds = parseInt(btn.getAttribute('data-time'), 10);
         this.remainingSeconds = this.totalSeconds;
-        display.textContent = formatTime(this.remainingSeconds);
+        this.elapsedSeconds = 0;
+        display.textContent = formatTime(this.mode === 'up' ? 0 : this.remainingSeconds);
         display.style.color = 'var(--theme-primary)';
         toggleBtn.innerHTML = '▶ Bắt đầu';
       };
@@ -174,13 +175,16 @@ export class TimerGame extends BaseGame {
         this.isRunning = false;
         // Chuong reo 3 lan cho ca lop nghe ro
         Sound.playBell();
-        setTimeout(() => Sound.playBell(), 900);
-        setTimeout(() => Sound.playBell(), 1800);
+        this.gameTimeout(() => Sound.playBell(), 900);
+        this.gameTimeout(() => Sound.playBell(), 1800);
         if (display) {
           display.textContent = 'HẾT GIỜ! 🔔';
           display.style.color = '#B45454';
         }
         const toggleBtn = this.viewportEl.querySelector('#btn-toggle-timer');
+        // Reset sẵn để bấm "Bắt đầu lại" chạy đúng, không phải bấm Đặt lại
+        this.remainingSeconds = this.totalSeconds;
+        this.elapsedSeconds = 0;
         if (toggleBtn) toggleBtn.innerHTML = '▶ Bắt đầu lại';
       }
     }, 1000);

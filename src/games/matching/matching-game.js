@@ -4,13 +4,23 @@
 
 import { BaseGame } from '../base-game.js';
 import { Sound } from '../audio-synth.js';
+import { escHtml } from '../question-media.js';
+
+function shuffleArr(a) {
+  a = a.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const t = a[i]; a[i] = a[j]; a[j] = t;
+  }
+  return a;
+}
 
 export class MatchingGame extends BaseGame {
   start() {
     const rawQuestions = this.content?.questions || [];
     this.pairs = rawQuestions.slice(0, 6).map((q, idx) => ({
       id: idx,
-      left: q.question,
+      left: q.question || ('Mục ' + (idx + 1)),
       right: (q.answers && q.answers[q.correctAnswer]) || q.explanation || 'Ý nghĩa ' + (idx + 1)
     }));
 
@@ -22,8 +32,8 @@ export class MatchingGame extends BaseGame {
       ];
     }
 
-    this.leftItems = [...this.pairs].sort(() => Math.random() - 0.5);
-    this.rightItems = [...this.pairs].sort(() => Math.random() - 0.5);
+    this.leftItems = shuffleArr(this.pairs);
+    this.rightItems = shuffleArr(this.pairs);
 
     this.selectedLeft = null;
     this.selectedRight = null;
@@ -31,6 +41,7 @@ export class MatchingGame extends BaseGame {
     this.attempts = 0;
     this.mistakes = 0;
     this.score = 0;
+    this._checking = false;
     this.state = 'playing';
 
     this.renderBoard();
@@ -58,7 +69,7 @@ export class MatchingGame extends BaseGame {
                 data-id="${item.id}" 
                 style="padding: 14px 16px; border: 2px solid var(--theme-border); border-radius: 10px; background: var(--theme-surface); text-align: left; cursor: pointer; transition: all 0.2s;"
                 ${this.matchedIds.has(item.id) ? 'disabled' : ''}>
-                ${item.left}
+                ${escHtml(item.left)}
               </button>
             `).join('')}
           </div>
@@ -71,7 +82,7 @@ export class MatchingGame extends BaseGame {
                 data-id="${item.id}" 
                 style="padding: 14px 16px; border: 2px solid var(--theme-border); border-radius: 10px; background: var(--theme-surface); text-align: left; cursor: pointer; transition: all 0.2s;"
                 ${this.matchedIds.has(item.id) ? 'disabled' : ''}>
-                ${item.right}
+                ${escHtml(item.right)}
               </button>
             `).join('')}
           </div>
@@ -89,9 +100,10 @@ export class MatchingGame extends BaseGame {
     const reshuffleBtn = this.viewportEl.querySelector('#btn-reshuffle-match');
     if (reshuffleBtn) {
       reshuffleBtn.onclick = () => {
+        if (this._checking) return;
         Sound.playClick();
-        this.leftItems = [...this.leftItems].sort(() => Math.random() - 0.5);
-        this.rightItems = [...this.rightItems].sort(() => Math.random() - 0.5);
+        this.leftItems = shuffleArr(this.leftItems);
+        this.rightItems = shuffleArr(this.rightItems);
         this.selectedLeft = null;
         this.selectedRight = null;
         this.renderBoard();
@@ -126,6 +138,7 @@ export class MatchingGame extends BaseGame {
 
   checkMatch() {
     if (this.selectedLeft === null || this.selectedRight === null) return;
+    if (this._checking) return;
     this.attempts++;
 
     if (this.selectedLeft === this.selectedRight) {
@@ -137,20 +150,22 @@ export class MatchingGame extends BaseGame {
       this.selectedRight = null;
 
       if (this.matchedIds.size >= this.pairs.length) {
-        setTimeout(() => this.finish(), 800);
+        this.gameTimeout(() => this.finish(), 800);
       } else {
         this.renderBoard();
       }
     } else {
-      // Incorrect
+      // Incorrect - khóa input trong lúc feedback
+      this._checking = true;
       Sound.playWrong();
       this.mistakes++;
       const lBtn = this.viewportEl.querySelector(`.left-btn[data-id="${this.selectedLeft}"]`);
       const rBtn = this.viewportEl.querySelector(`.right-btn[data-id="${this.selectedRight}"]`);
-      if (lBtn) lBtn.style.borderColor = '#B45454';
-      if (rBtn) rBtn.style.borderColor = '#B45454';
+      if (lBtn) { lBtn.style.borderColor = '#B45454'; lBtn.disabled = true; }
+      if (rBtn) { rBtn.style.borderColor = '#B45454'; rBtn.disabled = true; }
 
-      setTimeout(() => {
+      this.gameTimeout(() => {
+        this._checking = false;
         this.selectedLeft = null;
         this.selectedRight = null;
         this.renderBoard();

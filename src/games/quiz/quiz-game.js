@@ -5,13 +5,20 @@
 import { BaseGame } from '../base-game.js';
 import { Sound } from '../audio-synth.js';
 import { bindSpeakButtons } from '../../core/speech.js';
-import { questionImageHtml, questionTextRow, teacherBadgeHtml } from '../question-media.js';
+import { questionImageHtml, questionTextRow, teacherBadgeHtml, escHtml } from '../question-media.js';
 
 export class QuizGame extends BaseGame {
   start() {
-    this.questions = this.content?.questions || [];
+    this.questions = (this.content?.questions || []).map(q => ({
+      ...q,
+      answers: Array.isArray(q.answers) ? q.answers : [],
+      correctAnswer: (Number.isInteger(q.correctAnswer) && q.correctAnswer >= 0 && q.correctAnswer < (q.answers || []).length) ? q.correctAnswer : 0
+    }));
     if (this.options.shuffleQuestions) {
-      this.questions = [...this.questions].sort(() => Math.random() - 0.5);
+      for (let i = this.questions.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const t = this.questions[i]; this.questions[i] = this.questions[j]; this.questions[j] = t;
+      }
     }
     this.currentQuestionIndex = 0;
     this.score = 0;
@@ -23,6 +30,7 @@ export class QuizGame extends BaseGame {
   renderCurrentQuestion() {
     this.stopTimer();
     this.unbindKey();
+    this.clearGameTimeouts();
     const q = this.questions[this.currentQuestionIndex];
     if (!q) {
       this.finish();
@@ -59,7 +67,7 @@ export class QuizGame extends BaseGame {
           ${(q.answers || []).map((ans, idx) => `
             <button class="game-option-btn" data-index="${idx}">
               <span class="game-option-letter">${String.fromCharCode(65 + idx)}</span>
-              <span>${ans}</span>
+              <span>${escHtml(ans)}</span>
             </button>
           `).join('')}
         </div>
@@ -89,6 +97,9 @@ export class QuizGame extends BaseGame {
     const skipBtn = this.viewportEl.querySelector('#btn-skip-q');
     if (skipBtn) {
       skipBtn.onclick = () => {
+        if (this._locked) return;
+        this.picks.push({ question: q.question, picked: -2, correct: q.correctAnswer, answers: q.answers || [], ok: false, explanation: '' });
+        this.stopTimer();
         this.currentQuestionIndex++;
         this.renderCurrentQuestion();
       };
@@ -161,7 +172,7 @@ export class QuizGame extends BaseGame {
     }
 
     // Move to next question after short delay
-    setTimeout(() => {
+    this.gameTimeout(() => {
       this.currentQuestionIndex++;
       this.renderCurrentQuestion();
     }, this.options.showExplanation && q.explanation ? 2400 : 1200);
@@ -171,9 +182,10 @@ export class QuizGame extends BaseGame {
     const totalQ = this.questions.length || 1;
     const okCount = this.picks.filter(p => p.ok).length;
     const acc = Math.round(okCount / totalQ * 100);
+    this.unbindKey();
     this.viewportEl.innerHTML = `
       <div class="game-header">
-        <span class="font-semibold">${this.project.name || 'Kết quả'}</span>
+        <span class="font-semibold">${escHtml(this.project.name || 'Kết quả')}</span>
         <span class="badge badge-success">Hoàn thành!</span>
       </div>
       <div class="game-body" style="max-width: 640px; margin: 0 auto; width: 100%;">
@@ -187,11 +199,11 @@ export class QuizGame extends BaseGame {
         <div style="width: 100%; max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px;">
           ${(this.picks || []).map((p, i) => `
             <div style="padding: 10px 14px; border: 1px solid var(--theme-border); border-radius: 8px; background: var(--theme-surface); font-size: 14px; text-align: left;">
-              <div style="font-weight: 600; margin-bottom: 4px;">${i + 1}. ${p.question} ${p.ok ? '✓' : '✗'}</div>
+              <div style="font-weight: 600; margin-bottom: 4px;">${i + 1}. ${escHtml(p.question)} ${p.ok ? '✓' : '✗'}</div>
               <div style="color: ${p.ok ? '#2D5838' : '#872828'};">
-                Trả lời: ${p.picked >= 0 ? (p.answers[p.picked] ?? '?') : 'Hết giờ'} • Đáp án: ${p.answers[p.correct] ?? '?'}
+                Trả lời: ${p.picked === -2 ? 'Bỏ qua' : (p.picked >= 0 ? escHtml(p.answers[p.picked] ?? '?') : 'Hết giờ')} • Đáp án: ${escHtml(p.answers[p.correct] ?? '?')}
               </div>
-              ${p.explanation ? `<div style="color: var(--theme-text-subtle); margin-top: 4px;">Giải thích: ${p.explanation}</div>` : ''}
+              ${p.explanation ? `<div style="color: var(--theme-text-subtle); margin-top: 4px;">Giải thích: ${escHtml(p.explanation)}</div>` : ''}
             </div>
           `).join('')}
         </div>

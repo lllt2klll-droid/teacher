@@ -5,7 +5,7 @@
 import { BaseGame } from '../base-game.js';
 import { Sound } from '../audio-synth.js';
 import { bindSpeakButtons } from '../../core/speech.js';
-import { questionImageHtml, teacherBadgeHtml } from '../question-media.js';
+import { questionImageHtml, teacherBadgeHtml, escHtml } from '../question-media.js';
 
 export class RaceGame extends BaseGame {
   start() {
@@ -60,15 +60,15 @@ export class RaceGame extends BaseGame {
           ${questionImageHtml(q, 140)}
           ${teacherBadgeHtml(q, this.options.teacherMode)}
           <div style="display: flex; align-items: flex-start; justify-content: center; gap: 8px; margin-bottom: 20px;">
-            <div style="font-size: 18px; font-weight: 600; flex: 1;">${q.question}</div>
-            ${this.options.readAloud !== false ? `<button class="btn btn-secondary btn-sm btn-speak" data-speak="${q.question.replace(/"/g, '&quot;')}" title="Đọc to câu hỏi">🔊</button>` : ''}
+            <div style="font-size: 18px; font-weight: 600; flex: 1;">${escHtml(q.question)}</div>
+            ${this.options.readAloud !== false ? `<button class="btn btn-secondary btn-sm btn-speak" data-speak="${escHtml(q.question)}" title="Đọc to câu hỏi">🔊</button>` : ''}
           </div>
 
           <div class="gv-grid-2" style="gap: 12px;">
             ${(q.answers || []).map((ans, idx) => `
               <button class="game-option-btn race-opt-btn" data-index="${idx}">
                 <span class="game-option-letter">${String.fromCharCode(65 + idx)}</span>
-                <span>${ans}</span>
+                <span>${escHtml(ans)}</span>
               </button>
             `).join('')}
           </div>
@@ -83,8 +83,12 @@ export class RaceGame extends BaseGame {
 
     const optBtns = this.viewportEl.querySelectorAll('.race-opt-btn');
     bindSpeakButtons(this.viewportEl);
+    this._locked = false;
     optBtns.forEach(btn => {
       btn.onclick = () => {
+        if (this._locked) return;
+        this._locked = true;
+        optBtns.forEach(b => { b.disabled = true; });
         const choice = parseInt(btn.getAttribute('data-index'), 10);
         if (choice === q.correctAnswer) {
           Sound.playCorrect();
@@ -98,7 +102,7 @@ export class RaceGame extends BaseGame {
         }
 
         this.currentQIndex++;
-        setTimeout(() => this.renderTrack(), 900);
+        this.gameTimeout(() => { this._locked = false; this.renderTrack(); }, 900);
       };
     });
   }

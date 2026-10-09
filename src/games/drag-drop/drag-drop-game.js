@@ -6,6 +6,16 @@
 import { BaseGame } from '../base-game.js';
 import { Sound } from '../audio-synth.js';
 import { dragGroupsFromContent } from '../pairs-helper.js';
+import { escHtml } from '../question-media.js';
+
+function shuffleArr(a) {
+  a = a.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const t = a[i]; a[i] = a[j]; a[j] = t;
+  }
+  return a;
+}
 
 export class DragDropGame extends BaseGame {
   start() {
@@ -14,7 +24,7 @@ export class DragDropGame extends BaseGame {
     const derived = dragGroupsFromContent(this.content, 8);
     if (derived) {
       this.categories = derived.cats;
-      this.items = derived.items.sort(() => Math.random() - 0.5);
+      this.items = shuffleArr(derived.items);
     } else {
       // Demo khi chua co du lieu nhom (giup GV hieu cach choi ngay)
       this.categories = [
@@ -29,10 +39,12 @@ export class DragDropGame extends BaseGame {
         { id: 4, text: 'Cây lúa', targetCat: 'cat_b' },
         { id: 5, text: 'Chó', targetCat: 'cat_a' },
         { id: 6, text: 'Cây bàng', targetCat: 'cat_b' }
-      ].sort(() => Math.random() - 0.5);
+      ];
     }
+    this.items = shuffleArr(this.items);
 
     this.placedCount = 0;
+    this.placedIds = new Set();
     this.score = 0;
     this.state = 'playing';
 
@@ -52,7 +64,7 @@ export class DragDropGame extends BaseGame {
         <div id="drag-source-pool" style="min-height: 70px; background: var(--theme-surface); border: 2px dashed var(--theme-border); border-radius: 12px; padding: 12px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; justify-content: center;">
           ${this.items.map(item => `
             <div class="draggable-chip" draggable="true" data-id="${item.id}" data-target="${item.targetCat}" style="padding: 10px 18px; background: var(--theme-primary); color: #FFF; font-weight: 600; border-radius: 8px; cursor: grab; user-select: none; box-shadow: var(--shadow-sm); transition: transform 0.15s;">
-              ${item.text}
+              ${escHtml(item.text)}
             </div>
           `).join('')}
         </div>
@@ -62,7 +74,7 @@ export class DragDropGame extends BaseGame {
           ${this.categories.map(cat => `
             <div class="drop-target-box" data-cat="${cat.id}" style="min-height: 180px; background: var(--theme-surface); border: 2px solid var(--theme-border); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; transition: border-color 0.2s;">
               <div class="font-semibold" style="margin-bottom: 12px; font-size: 16px; border-bottom: 1px solid var(--theme-border); padding-bottom: 8px;">
-                ${cat.title}
+                ${escHtml(cat.title)}
               </div>
               <div class="bucket-contents flex gap-2 flex-wrap" style="flex: 1;"></div>
             </div>
@@ -82,9 +94,11 @@ export class DragDropGame extends BaseGame {
     if (resetBtn) {
       resetBtn.onclick = () => {
         Sound.playClick();
+        this.clearGameTimeouts();
         this.placedCount = 0;
+        this.placedIds = new Set();
         this.score = 0;
-        this.items = [...this.items].sort(() => Math.random() - 0.5);
+        this.items = shuffleArr(this.items);
         this.renderBoard();
       };
     }
@@ -139,26 +153,33 @@ export class DragDropGame extends BaseGame {
   verifyAndDrop(chipEl, bucketEl) {
     const targetCat = chipEl.getAttribute('data-target');
     const bucketCat = bucketEl.getAttribute('data-cat');
+    const chipId = chipEl.getAttribute('data-id');
+    // Chống cộng điểm trùng: chip đã đặt thì bỏ qua
+    if (chipEl.dataset.placed === '1' || (chipId != null && this.placedIds.has(chipId))) return;
 
     if (targetCat === bucketCat) {
       Sound.playCorrect();
+      chipEl.dataset.placed = '1';
+      if (chipId != null) this.placedIds.add(chipId);
       this.score += 10;
       this.placedCount++;
       
       const contents = bucketEl.querySelector('.bucket-contents');
       chipEl.removeAttribute('draggable');
+      chipEl.onclick = null;
+      chipEl.ondragstart = null;
       chipEl.style.cursor = 'default';
       chipEl.style.outline = 'none';
       chipEl.style.background = '#4D7A5A';
       contents.appendChild(chipEl);
 
       if (this.placedCount >= this.items.length) {
-        setTimeout(() => this.finish(), 800);
+        this.gameTimeout(() => this.finish(), 800);
       }
     } else {
       Sound.playWrong();
       chipEl.style.outline = '3px solid #B45454';
-      setTimeout(() => chipEl.style.outline = 'none', 600);
+      this.gameTimeout(() => { try { chipEl.style.outline = 'none'; } catch (e) {} }, 600);
     }
   }
 }

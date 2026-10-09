@@ -26,26 +26,55 @@ export const ValidationEngine = {
 
     // 3. Questions integrity
     let emptyQuestionsCount = 0;
+    let oobCount = 0;
+    let emptyAnswersCount = 0;
     questions.forEach((q, idx) => {
-      if (!q.question || !q.question.trim()) {
+      if (!q.question || !String(q.question).trim()) {
         emptyQuestionsCount++;
+      }
+      if (!Array.isArray(q.answers) || q.answers.length === 0) {
+        emptyAnswersCount++;
+      } else if (!Number.isInteger(q.correctAnswer) || q.correctAnswer < 0 || q.correctAnswer >= q.answers.length) {
+        oobCount++;
+      }
+      if (typeof q.points === 'number' && q.points < 0) {
+        oobCount++;
+      }
+      if (typeof q.timeLimit === 'number' && q.timeLimit < 0) {
+        oobCount++;
       }
     });
 
     if (emptyQuestionsCount > 0) {
       checks.push({ status: 'warning', message: `Có ${emptyQuestionsCount} câu hỏi chưa có nội dung cụ thể.` });
     }
+    if (emptyAnswersCount > 0) {
+      checks.push({ status: 'error', message: `Có ${emptyAnswersCount} câu chưa có phương án trả lời.` });
+      hasError = true;
+    }
+    if (oobCount > 0) {
+      checks.push({ status: 'error', message: `Có ${oobCount} câu đáp án đúng ngoài phạm vi / điểm / thời gian âm — hãy sửa trước khi xuất.` });
+      hasError = true;
+    }
+    // gameType lạ
+    const knownTypes = ['quiz', 'true-false', 'flashcard', 'matching', 'drag-drop', 'connect', 'wheel', 'jigsaw', 'crossword', 'timer', 'tug-of-war', 'race'];
+    if (project.gameType && !knownTypes.includes(project.gameType)) {
+      checks.push({ status: 'warning', message: `Kiểu game "${project.gameType}" lạ, sẽ dùng Quiz khi xuất.` });
+    }
 
     // 4. Theme check
     checks.push({ status: 'ok', message: `Chủ đề được áp dụng: ${project.themeId || 'minimal'}` });
 
-    // 4b. Media size check (ảnh minh họa base64)
+    // 4b. Media size check (ảnh minh họa base64, gồm coverImage jigsaw)
     let mediaBytes = 0;
     questions.forEach((q) => {
       if (q.image && typeof q.image === 'string' && q.image.startsWith('data:')) {
         mediaBytes += Math.round(q.image.length * 0.75);
       }
     });
+    if (content && content.coverImage && typeof content.coverImage === 'string' && content.coverImage.startsWith('data:')) {
+      mediaBytes += Math.round(content.coverImage.length * 0.75);
+    }
     if (mediaBytes > 1536 * 1024) {
       checks.push({ status: 'warning', message: `Ảnh minh họa nặng ~${Math.round(mediaBytes / 1024)} KB — file xuất sẽ mở chậm, nên xóa bớt hoặc đổi ảnh nhẹ hơn.` });
     } else if (mediaBytes > 0) {
@@ -53,7 +82,8 @@ export const ValidationEngine = {
     }
 
     // 5. External dependencies check
-    checks.push({ status: 'ok', message: 'Không phát hiện liên kết mạng ngoài. File hoàn toàn độc lập 100%.' });
+    // Lưu ý: link QR dùng api.qrserver.com nhưng chỉ khi GV bấm tạo QR, file game vẫn offline 100%
+    checks.push({ status: 'ok', message: 'File game xuất hoàn toàn độc lập, không cần mạng (chỉ link QR dùng mạng khi GV tạo).' });
 
     // 6. Estimated file size check
     const rawDataSize = JSON.stringify({ project, content }).length;

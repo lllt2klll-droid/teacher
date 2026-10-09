@@ -20,7 +20,7 @@ export const ContentEngine = {
     return {
       id: id || 'q_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
       type,
-      question: question.trim(),
+      question: String(question == null ? '' : question).trim(),
       answers: Array.isArray(answers) ? answers.map(a => String(a).trim()) : [],
       correctAnswer: typeof correctAnswer === 'number' ? correctAnswer : 0,
       explanation: (explanation || '').trim(),
@@ -116,18 +116,22 @@ export const ContentEngine = {
     switch (targetGameType) {
       case 'true-false': {
         // Must convert multi-choice into True/False statements
+        // Ngẫu nhiên 50/50 ĐÚNG/SAI để HS không bấm ĐÚNG hết là max điểm
         result.convertedContent.questions = questions.map(q => {
           const isSingle = q.answers && q.answers.length > 0;
           const correctText = isSingle ? q.answers[q.correctAnswer] : 'Đúng';
+          const makeTrue = Math.random() < 0.5;
           return {
             ...q,
             type: 'true-false',
-            question: `${q.question} (Khẳng định: ${correctText})`,
+            question: makeTrue
+              ? `${q.question} (Khẳng định: ${correctText})`
+              : `${q.question} (Khẳng định: ${correctText} là sai?)`,
             answers: ['ĐÚNG', 'SAI'],
-            correctAnswer: 0
+            correctAnswer: makeTrue ? 0 : 1
           };
         });
-        result.warnings.push('Các câu hỏi trắc nghiệm đã được chuyển thành mệnh đề Đúng/Sai.');
+        result.warnings.push('Các câu hỏi trắc nghiệm đã được chuyển thành mệnh đề Đúng/Sai (ngẫu nhiên đúng/sai).');
         break;
       }
 
@@ -228,6 +232,9 @@ export const ContentEngine = {
     (content?.questions || []).forEach(q => {
       if (q.image && q.image.startsWith('data:')) bytes += Math.round(q.image.length * 0.75);
     });
+    if (content && content.coverImage && typeof content.coverImage === 'string' && content.coverImage.startsWith('data:')) {
+      bytes += Math.round(content.coverImage.length * 0.75);
+    }
     return bytes;
   },
 

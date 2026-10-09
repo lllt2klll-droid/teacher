@@ -5,6 +5,11 @@
 import { Sound } from './audio-synth.js';
 import { ThemeEngine } from '../core/theme-engine.js';
 
+function escBase(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
 export class BaseGame {
   constructor(container, project = {}, content = {}, options = {}) {
     this.container = container;
@@ -17,10 +22,35 @@ export class BaseGame {
     this.currentQuestionIndex = 0;
     this.timer = null;
     this.timeLeft = this.options.timerSeconds || 30;
+    this._timeouts = new Set();
+    this._rafIds = new Set();
     
     if (this.options.soundEnabled !== undefined) {
       Sound.setEnabled(this.options.soundEnabled);
     }
+  }
+
+  // Timeout/RAF có tracking để destroy() hủy được, chống callback ma
+  gameTimeout(fn, ms) {
+    const id = setTimeout(() => { this._timeouts.delete(id); try { fn(); } catch (e) {} }, ms);
+    this._timeouts.add(id);
+    return id;
+  }
+
+  clearGameTimeouts() {
+    this._timeouts.forEach(id => { try { clearTimeout(id); } catch (e) {} });
+    this._timeouts.clear();
+  }
+
+  gameRAF(fn) {
+    const id = requestAnimationFrame((t) => { this._rafIds.delete(id); try { fn(t); } catch (e) {} });
+    this._rafIds.add(id);
+    return id;
+  }
+
+  cancelGameRAFs() {
+    this._rafIds.forEach(id => { try { cancelAnimationFrame(id); } catch (e) {} });
+    this._rafIds.clear();
   }
 
   mount() {
@@ -40,13 +70,13 @@ export class BaseGame {
   renderReadyScreen() {
     this.viewportEl.innerHTML = `
       <div class="game-header">
-        <span class="font-semibold">${this.project.name || 'Trò chơi'}</span>
-        <span class="badge badge-primary">${this.project.subject || 'Lớp học'}</span>
+        <span class="font-semibold">${escBase(this.project.name || 'Trò chơi')}</span>
+        <span class="badge badge-primary">${escBase(this.project.subject || 'Lớp học')}</span>
       </div>
       <div class="game-body text-center">
-        <h2 style="font-size: 26px; margin-bottom: 12px; color: var(--theme-text);">${this.project.name || 'Sẵn sàng!'}</h2>
+        <h2 style="font-size: 26px; margin-bottom: 12px; color: var(--theme-text);">${escBase(this.project.name || 'Sẵn sàng!')}</h2>
         <p style="color: var(--theme-text-subtle); max-width: 440px; margin-bottom: 24px;">
-          ${this.project.description || 'Bấm nút Bắt đầu để tham gia trò chơi.'}
+          ${escBase(this.project.description || 'Bấm nút Bắt đầu để tham gia trò chơi.')}
         </p>
         <button class="btn btn-primary btn-lg" id="btn-start-game" style="font-size: 18px; padding: 12px 32px; border-radius: 9999px;">
           ▶ Bắt đầu trò chơi
@@ -85,7 +115,7 @@ export class BaseGame {
     const totalQ = this.content?.questions?.length || 1;
     this.viewportEl.innerHTML = `
       <div class="game-header">
-        <span class="font-semibold">${this.project.name || 'Kết quả'}</span>
+        <span class="font-semibold">${escBase(this.project.name || 'Kết quả')}</span>
         <span class="badge badge-success">Hoàn thành!</span>
       </div>
       <div class="game-body text-center">
@@ -142,6 +172,8 @@ export class BaseGame {
   destroy() {
     this.stopTimer();
     this.unbindKey();
+    this.clearGameTimeouts();
+    this.cancelGameRAFs();
     if (this.container) {
       this.container.innerHTML = '';
     }

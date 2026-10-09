@@ -5,6 +5,16 @@
 import { BaseGame } from '../base-game.js';
 import { Sound } from '../audio-synth.js';
 import { pairsFromContent } from '../pairs-helper.js';
+import { escHtml } from '../question-media.js';
+
+function shuffleArr(a) {
+  a = a.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const t = a[i]; a[i] = a[j]; a[j] = t;
+  }
+  return a;
+}
 
 export class ConnectGame extends BaseGame {
   start() {
@@ -17,13 +27,14 @@ export class ConnectGame extends BaseGame {
       { id: 3, left: 'Thủ đô Washington D.C', right: 'Hoa Kỳ' }
     ];
 
-    this.leftList = [...this.pairs].sort(() => Math.random() - 0.5);
-    this.rightList = [...this.pairs].sort(() => Math.random() - 0.5);
+    this.leftList = shuffleArr(this.pairs);
+    this.rightList = shuffleArr(this.pairs);
 
     this.selectedLeft = null;
     this.connected = new Set();
     this.attempts = 0;
     this.score = 0;
+    this._checking = false;
     this.state = 'playing';
 
     this.renderBoard();
@@ -50,7 +61,7 @@ export class ConnectGame extends BaseGame {
                 data-id="${item.id}"
                 style="padding: 14px 18px; border: 2px solid var(--theme-border); border-radius: 10px; background: var(--theme-surface); text-align: left; cursor: pointer; transition: all 0.2s;"
                 ${this.connected.has(item.id) ? 'disabled' : ''}>
-                ● ${item.left}
+                ● ${escHtml(item.left)}
               </button>
             `).join('')}
           </div>
@@ -62,7 +73,7 @@ export class ConnectGame extends BaseGame {
                 data-id="${item.id}"
                 style="padding: 14px 18px; border: 2px solid var(--theme-border); border-radius: 10px; background: var(--theme-surface); text-align: right; cursor: pointer; transition: all 0.2s;"
                 ${this.connected.has(item.id) ? 'disabled' : ''}>
-                ${item.right} ●
+                ${escHtml(item.right)} ●
               </button>
             `).join('')}
           </div>
@@ -80,10 +91,13 @@ export class ConnectGame extends BaseGame {
     const resetBtn = this.viewportEl.querySelector('#btn-reset-connect');
     if (resetBtn) {
       resetBtn.onclick = () => {
+        if (this._checking) return;
         Sound.playClick();
+        this.clearGameTimeouts();
         this.connected = new Set();
         this.selectedLeft = null;
         this.attempts = 0;
+        this.score = 0;
         this.renderBoard();
       };
     }
@@ -104,7 +118,7 @@ export class ConnectGame extends BaseGame {
 
     rightNodes.forEach(node => {
       node.onclick = () => {
-        if (this.selectedLeft === null) return;
+        if (this.selectedLeft === null || this._checking) return;
         const rightId = parseInt(node.getAttribute('data-id'), 10);
         this.attempts++;
 
@@ -115,14 +129,17 @@ export class ConnectGame extends BaseGame {
           this.selectedLeft = null;
 
           if (this.connected.size >= this.pairs.length) {
-            setTimeout(() => this.finish(), 800);
+            this.gameTimeout(() => this.finish(), 800);
           } else {
             this.renderBoard();
           }
         } else {
           Sound.playWrong();
+          this._checking = true;
           node.style.borderColor = '#B45454';
-          setTimeout(() => {
+          node.disabled = true;
+          this.gameTimeout(() => {
+            this._checking = false;
             this.selectedLeft = null;
             this.renderBoard();
           }, 600);

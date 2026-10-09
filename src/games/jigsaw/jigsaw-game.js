@@ -19,17 +19,25 @@ export class JigsawGame extends BaseGame {
       ];
     }
 
-    this.totalTiles = Math.max(4, this.questions.length);
-    this.totalTiles = Math.min(9, this.totalTiles);
+    // Chốt số mảnh về lưới kín không ô trống: 4 (2x2), 6 (3x2), 9 (3x3)
+    // Tránh totalTiles = 5,7,8 gây thừa slot grid
+    const want = Math.max(4, Math.min(9, this.questions.length));
+    this.totalTiles = (want <= 4) ? 4 : (want <= 6) ? 6 : 9;
+    // Nếu chỉ có 1-3 câu: lặp lại câu hỏi để đủ mảnh, tránh finish sớm / q undefined
+    while (this.questions.length < this.totalTiles) {
+      this.questions = this.questions.concat(this.questions.slice(0, this.totalTiles - this.questions.length));
+    }
     this.questions = this.questions.slice(0, this.totalTiles);
     // Luoi dong theo so cau: 4 -> 2x2, 6 -> 3x2, 9 -> 3x3
     this.gridCols = Math.ceil(Math.sqrt(this.totalTiles));
     this.gridRows = Math.ceil(this.totalTiles / this.gridCols);
     // Anh nen bi mat: content.coverImage (se co cho tai o Dot 3), tam dung gradient
-    this.coverImage = (this.content && this.content.coverImage) || '';
+    const rawCover = (this.content && this.content.coverImage) || '';
+    this.coverImage = (/^data:image\//i.test(rawCover) || /^https?:\/\//i.test(rawCover)) ? rawCover : '';
     this.revealedTiles = new Set();
     this.currentQIndex = 0;
     this.attempts = 0;
+    this._locked = false;
     this.state = 'playing';
 
     this.renderBoard();
@@ -55,7 +63,7 @@ export class JigsawGame extends BaseGame {
 
           <!-- Underlying secret visual -->
           ${this.coverImage
-            ? `<img src="${this.coverImage}" alt="Tranh bí mật" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;">`
+            ? `<img src="${escHtml(this.coverImage)}" alt="Tranh bí mật" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;">`
             : `<div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #FFF; text-align: center; padding: 20px;">
             <div style="font-size: 64px; margin-bottom: 8px;">🌟</div>
             <div style="font-size: 18px; font-weight: 700;">HỌC TẬP TỐT</div>
@@ -87,7 +95,7 @@ export class JigsawGame extends BaseGame {
             ${(q.answers || []).map((ans, idx) => `
               <button class="game-option-btn jigsaw-opt-btn" data-index="${idx}" style="padding: 10px 14px; margin-bottom: 4px;">
                 <span class="game-option-letter">${String.fromCharCode(65 + idx)}</span>
-                <span>${ans}</span>
+                <span>${escHtml(ans)}</span>
               </button>
             `).join('')}
           </div>
@@ -104,14 +112,18 @@ export class JigsawGame extends BaseGame {
     bindSpeakButtons(this.viewportEl);
     optBtns.forEach(btn => {
       btn.onclick = () => {
+        if (this._locked) return;
         const choice = parseInt(btn.getAttribute('data-index'), 10);
         this.attempts++;
         if (choice === q.correctAnswer) {
+          this._locked = true;
           Sound.playCorrect();
           btn.classList.add('correct');
+          optBtns.forEach(b => { b.disabled = true; });
           this.revealedTiles.add(this.revealedTiles.size); // Reveal next tile
           this.score += 15;
-          setTimeout(() => {
+          this.gameTimeout(() => {
+            this._locked = false;
             this.currentQIndex++;
             this.renderBoard();
           }, 800);
@@ -120,7 +132,7 @@ export class JigsawGame extends BaseGame {
           btn.classList.add('incorrect');
           const footerNote = this.viewportEl.querySelector('.game-footer span');
           if (footerNote) footerNote.textContent = `Trả lời đúng câu hỏi để lật mở ô tranh tương ứng • Lượt thử: ${this.attempts}`;
-          setTimeout(() => btn.classList.remove('incorrect'), 600);
+          this.gameTimeout(() => { try { btn.classList.remove('incorrect'); } catch (e) {} }, 600);
         }
       };
     });
