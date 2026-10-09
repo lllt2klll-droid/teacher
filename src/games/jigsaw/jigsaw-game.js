@@ -29,6 +29,7 @@ export class JigsawGame extends BaseGame {
     this.coverImage = (this.content && this.content.coverImage) || '';
     this.revealedTiles = new Set();
     this.currentQIndex = 0;
+    this.attempts = 0;
     this.state = 'playing';
 
     this.renderBoard();
@@ -95,7 +96,7 @@ export class JigsawGame extends BaseGame {
       </div>
 
       <div class="game-footer">
-        <span style="font-size: 13px; color: var(--theme-text-subtle);">Trả lời đúng câu hỏi để lật mở ô tranh tương ứng</span>
+        <span style="font-size: 13px; color: var(--theme-text-subtle);">Trả lời đúng câu hỏi để lật mở ô tranh tương ứng • Lượt thử: ${this.attempts}</span>
       </div>
     `;
 
@@ -104,6 +105,7 @@ export class JigsawGame extends BaseGame {
     optBtns.forEach(btn => {
       btn.onclick = () => {
         const choice = parseInt(btn.getAttribute('data-index'), 10);
+        this.attempts++;
         if (choice === q.correctAnswer) {
           Sound.playCorrect();
           btn.classList.add('correct');
@@ -116,6 +118,8 @@ export class JigsawGame extends BaseGame {
         } else {
           Sound.playWrong();
           btn.classList.add('incorrect');
+          const footerNote = this.viewportEl.querySelector('.game-footer span');
+          if (footerNote) footerNote.textContent = `Trả lời đúng câu hỏi để lật mở ô tranh tương ứng • Lượt thử: ${this.attempts}`;
           setTimeout(() => btn.classList.remove('incorrect'), 600);
         }
       };

@@ -43,6 +43,7 @@ export class TugOfWarGame extends BaseGame {
     this.viewportEl.innerHTML = `
       <div class="game-header">
         <span class="badge badge-primary">Kéo co đồng đội</span>
+        <span style="font-size: 13px; color: var(--theme-text-subtle);">Câu ${Math.min(this.currentQIndex + 1, this.questions.length)}/${this.questions.length} • Đích ${this.goal}</span>
         <span style="font-size: 13px; font-weight: 700;"><span style="color: #2563EB;">🔵 ${this.blueScore}</span> - <span style="color: #DC2626;">${this.redScore} 🔴</span></span>
         <span class="badge" style="background-color: ${teamColor}; color: #FFF; font-weight: 700;">LƯỢT CỦA: ${teamName}</span>
       </div>

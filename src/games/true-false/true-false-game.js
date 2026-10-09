@@ -12,6 +12,8 @@ export class TrueFalseGame extends BaseGame {
     this.questions = this.content?.questions || [];
     this.currentQuestionIndex = 0;
     this.score = 0;
+    this.streak = 0;
+    this.bestStreak = 0;
     this.state = 'playing';
     this.bindKeyboard();
     this.renderCurrentQuestion();
@@ -42,7 +44,7 @@ export class TrueFalseGame extends BaseGame {
     this.viewportEl.innerHTML = `
       <div class="game-header">
         <span class="badge badge-primary">Mệnh đề ${qNum} / ${totalQ}</span>
-        <span style="font-size: 13px; color: var(--theme-text-subtle);">Điểm: <strong>${this.score}</strong></span>
+        <span style="font-size: 13px; color: var(--theme-text-subtle);">Điểm: <strong>${this.score}</strong>${this.streak >= 2 ? ` • 🔥 Chuỗi ${this.streak}` : ''}</span>
       </div>
 
       <div class="game-body" style="max-width: 600px; margin: 0 auto; width: 100%; text-align: center;">
@@ -94,17 +96,29 @@ export class TrueFalseGame extends BaseGame {
     if (isCorrect) {
       Sound.playCorrect();
       this.score += q.points || 10;
+      this.streak++;
+      if (this.streak > this.bestStreak) this.bestStreak = this.streak;
       if (choice === 0) btnTrue.style.backgroundColor = '#4D7A5A';
       else btnFalse.style.backgroundColor = '#4D7A5A';
     } else {
       Sound.playWrong();
+      this.streak = 0;
       if (choice === 0) btnTrue.style.backgroundColor = '#B45454';
       else btnFalse.style.backgroundColor = '#B45454';
+    }
+
+    // Hien giai thich (neu co) truoc khi sang cau moi
+    if (q.explanation) {
+      const box = document.createElement('div');
+      box.style.cssText = 'margin-top: 16px; padding: 10px 14px; background: rgba(0,0,0,0.04); border-radius: 8px; font-size: 14px; text-align: left;';
+      box.innerHTML = `<strong>Giải thích:</strong> ${q.explanation}`;
+      const body = this.viewportEl.querySelector('.game-body');
+      if (body) body.appendChild(box);
     }
 
     setTimeout(() => {
       this.currentQuestionIndex++;
       this.renderCurrentQuestion();
-    }, 1100);
+    }, q.explanation ? 2200 : 1100);
   }
 }

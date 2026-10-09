@@ -15,6 +15,7 @@ export class QuizGame extends BaseGame {
     }
     this.currentQuestionIndex = 0;
     this.score = 0;
+    this.picks = [];
     this.state = 'playing';
     this.renderCurrentQuestion();
   }
@@ -47,6 +48,9 @@ export class QuizGame extends BaseGame {
       </div>
 
       <div class="game-body" style="max-width: 680px; margin: 0 auto; width: 100%;">
+        <div style="width: 100%; height: 6px; background: rgba(0,0,0,0.08); border-radius: 3px; margin-bottom: 16px;" title="Tiến trình ${qNum}/${totalQ}">
+          <div style="height: 100%; width: ${Math.round((qNum - 1) / totalQ * 100)}%; background: var(--theme-primary); border-radius: 3px; transition: width 0.3s;"></div>
+        </div>
         ${questionImageHtml(q)}
         ${teacherBadgeHtml(q, this.options.teacherMode)}
         ${questionTextRow(q, 20, this.options.readAloud !== false)}
@@ -127,6 +131,7 @@ export class QuizGame extends BaseGame {
     this._locked = true;
     this.stopTimer();
     const isCorrect = selectedIndex === q.correctAnswer;
+    this.picks.push({ question: q.question, picked: selectedIndex, correct: q.correctAnswer, answers: q.answers || [], ok: isCorrect, explanation: q.explanation || '' });
     const optionBtns = this.viewportEl.querySelectorAll('.game-option-btn');
     
     optionBtns.forEach((btn, idx) => {
@@ -160,5 +165,48 @@ export class QuizGame extends BaseGame {
       this.currentQuestionIndex++;
       this.renderCurrentQuestion();
     }, this.options.showExplanation && q.explanation ? 2400 : 1200);
+  }
+
+  renderResultScreen() {
+    const totalQ = this.questions.length || 1;
+    const okCount = this.picks.filter(p => p.ok).length;
+    const acc = Math.round(okCount / totalQ * 100);
+    this.viewportEl.innerHTML = `
+      <div class="game-header">
+        <span class="font-semibold">${this.project.name || 'Kết quả'}</span>
+        <span class="badge badge-success">Hoàn thành!</span>
+      </div>
+      <div class="game-body" style="max-width: 640px; margin: 0 auto; width: 100%;">
+        <div class="text-center" style="margin-bottom: 16px;">
+          <div style="font-size: 48px;">🎉</div>
+          <h2 style="font-size: 24px; margin-bottom: 4px;">Đúng ${okCount}/${totalQ} câu (${acc}%)</h2>
+          <p style="font-size: 16px; color: var(--theme-text-subtle);">
+            Điểm số: <strong style="color: var(--theme-primary); font-size: 22px;">${this.score}</strong> điểm
+          </p>
+        </div>
+        <div style="width: 100%; max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px;">
+          ${(this.picks || []).map((p, i) => `
+            <div style="padding: 10px 14px; border: 1px solid var(--theme-border); border-radius: 8px; background: var(--theme-surface); font-size: 14px; text-align: left;">
+              <div style="font-weight: 600; margin-bottom: 4px;">${i + 1}. ${p.question} ${p.ok ? '✓' : '✗'}</div>
+              <div style="color: ${p.ok ? '#2D5838' : '#872828'};">
+                Trả lời: ${p.picked >= 0 ? (p.answers[p.picked] ?? '?') : 'Hết giờ'} • Đáp án: ${p.answers[p.correct] ?? '?'}
+              </div>
+              ${p.explanation ? `<div style="color: var(--theme-text-subtle); margin-top: 4px;">Giải thích: ${p.explanation}</div>` : ''}
+            </div>
+          `).join('')}
+        </div>
+        <button class="btn btn-primary btn-lg" id="btn-restart-game">
+          🔄 Chơi lại từ đầu
+        </button>
+      </div>
+      <div class="game-footer">
+        <span style="font-size: 13px; color: var(--theme-text-subtle);">TeacherStudio</span>
+      </div>
+    `;
+
+    const restartBtn = this.viewportEl.querySelector('#btn-restart-game');
+    if (restartBtn) {
+      restartBtn.onclick = () => this.restart();
+    }
   }
 }

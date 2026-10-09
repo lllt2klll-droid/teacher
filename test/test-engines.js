@@ -281,6 +281,39 @@ assert(edSrc.includes('class="seg"') && edSrc.includes('m-tab'), 'Editor co segm
 const appSrc = fs.readFileSync('src/app/app.js', 'utf-8');
 assert(appSrc.includes('avatar-top'), 'Topbar co avatar giao vien');
 
+// 13. Tinh nang nho 12 game (preview + export)
+console.log('\n13. Kiem tra tinh nang nho 12 game:');
+function has(src, s) { return fs.readFileSync(src, 'utf-8').includes(s); }
+const EXP = 'src/core/export-engine.js';
+assert(has('src/games/quiz/quiz-game.js', 'this.picks') && has('src/games/quiz/quiz-game.js', 'renderResultScreen'), 'Quiz: luu dap an + man hinh xem lai');
+assert(has(EXP, 'finishQuiz') && has(EXP, 'picks.push'), 'Xuat Quiz: tien trinh + xem lai');
+assert(has('src/games/true-false/true-false-game.js', 'bestStreak') && has('src/games/true-false/true-false-game.js', '2200'), 'Dung/Sai: streak + giai thich');
+assert(has(EXP, 'streak') && has(EXP, 'Giai thich'), 'Xuat Dung/Sai: streak + giai thich');
+assert(has('src/games/flashcard/flashcard-game.js', 'masteredSet') && has('src/games/flashcard/flashcard-game.js', 'btn-shuffle-cards'), 'Flashcard: chong trung diem + nut xao');
+assert(has(EXP, 'id="bS"') || has(EXP, "id=\"bS\""), 'Xuat Flashcard: nut xao');
+assert(has('src/games/matching/matching-game.js', 'mistakes') && has('src/games/matching/matching-game.js', 'btn-reshuffle-match'), 'Ghep doi: dem sai + xao lai');
+assert(has(EXP, 'errs') && has(EXP, 'mSh'), 'Xuat Ghep doi: dem sai + xao');
+assert(has('src/games/drag-drop/drag-drop-game.js', 'btn-reset-drag'), 'Keo tha: nut xep lai');
+assert(has(EXP, 'dRs'), 'Xuat Keo tha: nut xep lai');
+assert(has('src/games/connect/connect-game.js', 'btn-reset-connect') && has('src/games/connect/connect-game.js', 'attempts'), 'Noi y: reset + dem luot');
+assert(has(EXP, 'cRs') && has(EXP, 'tries'), 'Xuat Noi y: reset + dem luot');
+assert(has('src/games/wheel/wheel-game.js', 'inp-add-wheel') && has('src/games/wheel/wheel-game.js', 'history'), 'Vong quay: them ten + lich su');
+assert(has(EXP, 'wAdd') && has(EXP, 'hist'), 'Xuat Vong quay: them ten + lich su');
+assert(has('src/games/jigsaw/jigsaw-game.js', 'attempts'), 'Manh ghep: dem luot thu');
+assert(has(EXP, 'Luot thu'), 'Xuat Manh ghep: dem luot thu');
+assert(has('src/games/crossword/crossword-game.js', 'hint-word-btn') && has('src/games/crossword/crossword-game.js', 'hinted'), 'O chu: nut goi y nua diem');
+assert(has(EXP, 'data-hint') && has(EXP, 'hinted'), 'Xuat O chu: goi y');
+assert(has('src/games/timer/timer-game.js', 'btn-timer-mode') && has('src/games/timer/timer-game.js', 'elapsedSeconds'), 'Dong ho: dem len + phut tuy chinh');
+assert(has(EXP, 'tMode') && has(EXP, 'bell3'), 'Xuat Dong ho: dem len + chuong 3');
+assert(has('src/games/classroom/tug-of-war-game.js', 'goal'), 'Keo co: hien dich + so cau');
+assert(has(EXP, 'Dich'), 'Xuat Keo co: dich + so cau');
+assert(has('src/games/classroom/race-game.js', 'startTime'), 'Dua xe: do thoi gian + do chinh xac');
+assert(has(EXP, 't0'), 'Xuat Dua xe: thoi gian');
+// Chuc nang: o chu goi y nua diem
+const CW = await import('../src/games/crossword/crossword-game.js');
+assert(typeof CW.CrosswordGame === 'function', 'CrosswordGame tai duoc');
+assert(PH.crosswordWordsFromContent({ questions: [{ question: 'Mau?', answers: ['Do', 'Xanh'], correctAnswer: 0 }] })[0].answer === 'DO', 'Helper goi y dung dap an');
+
 console.log(`\n========================================`);
 console.log(`KẾT QUẢ: Đã vượt qua ${passed} kiểm thử, Thất bại: ${failed}`);
 if (failed > 0) process.exit(1);

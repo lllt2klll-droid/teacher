@@ -17,6 +17,7 @@ export class CrosswordGame extends BaseGame {
     ];
 
     this.solved = new Set();
+    this.hinted = new Set();
     this.score = 0;
     this.state = 'playing';
 
@@ -51,6 +52,11 @@ export class CrosswordGame extends BaseGame {
                 <button class="btn btn-primary btn-sm check-word-btn" data-id="${item.id}" ${this.solved.has(item.id) ? 'disabled' : ''}>
                   ${this.solved.has(item.id) ? '✓ Đã giải' : 'Kiểm tra'}
                 </button>
+                ${!this.solved.has(item.id) && !this.hinted.has(item.id) ? `
+                  <button class="btn btn-secondary btn-sm hint-word-btn" data-id="${item.id}" title="Hiện chữ cái đầu (được nửa điểm)">
+                    💡 Gợi ý
+                  </button>
+                ` : ''}
               </div>
             </div>
           `).join('')}
@@ -79,7 +85,7 @@ export class CrosswordGame extends BaseGame {
         if (val === normText(item.answer) && val.length > 0) {
           Sound.playCorrect();
           this.solved.add(id);
-          this.score += 20;
+          this.score += this.hinted.has(id) ? 10 : 20;
           this.renderCrossword();
 
           if (this.solved.size >= this.words.length) {
@@ -92,6 +98,21 @@ export class CrosswordGame extends BaseGame {
             input.style.borderColor = 'var(--theme-border)';
           }, 600);
         }
+      };
+    });
+
+    this.viewportEl.querySelectorAll('.hint-word-btn').forEach(btn => {
+      btn.onclick = () => {
+        const id = parseInt(btn.getAttribute('data-id'), 10);
+        const item = this.words.find(w => w.id === id);
+        const input = this.viewportEl.querySelector(`.crossword-input[data-id="${id}"]`);
+        if (!input || !item || this.hinted.has(id)) return;
+        Sound.playClick();
+        this.hinted.add(id);
+        input.value = item.answer.charAt(0);
+        input.focus();
+        btn.disabled = true;
+        btn.textContent = '💡 Đã gợi ý (-10đ)';
       };
     });
   }

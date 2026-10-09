@@ -316,12 +316,35 @@ export const ExportEngine = {
 
       /* ---- QUIZ ---- */
       function runQuiz() {
+        var picks = [];
+        function finishQuiz() {
+          Sound.playCheer();
+          var ok = picks.filter(function (p) { return p.ok; }).length;
+          var total = questions.length || 1;
+          root.innerHTML = header(project.name || 'Ket qua', '<span class="badge badge-success">Hoan thanh!</span>') +
+            '<div class="game-body" style="max-width:640px;margin:0 auto;width:100%;">' +
+            '<div class="text-center" style="margin-bottom:16px;"><div style="font-size:48px;">🎉</div>' +
+            '<h2 style="font-size:24px;">Dung ' + ok + '/' + total + ' cau</h2>' +
+            '<p>Tong diem: <strong style="font-size:24px;color:var(--theme-primary);">' + score + '</strong> diem</p></div>' +
+            '<div style="width:100%;max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">' +
+            picks.map(function (p, i) {
+              return '<div style="padding:10px 14px;border:1px solid var(--theme-border);border-radius:8px;background:var(--theme-surface);font-size:14px;text-align:left;">' +
+                '<div style="font-weight:600;">' + (i + 1) + '. ' + esc(p.question) + ' ' + (p.ok ? '✓' : '✗') + '</div>' +
+                '<div>Tra loi: ' + esc(p.picked) + ' • Dap an: ' + esc(p.right) + '</div></div>';
+            }).join('') + '</div>' +
+            '<div class="text-center"><button class="btn btn-primary btn-lg" id="btn-restart">🔄 Choi lai tu dau</button></div></div>' +
+            footer();
+          document.getElementById('btn-restart').onclick = function () { score = 0; qIndex = 0; picks = []; boot(); };
+          if (PROFILE === 'canva') notifyParent();
+        }
         function showQ() {
           var q = questions[qIndex];
-          if (!q) { finishScreen(); return; }
+          if (!q) { finishQuiz(); return; }
           root.innerHTML = header('Quiz - Cau ' + (qIndex + 1) + ' / ' + questions.length,
             '<span>Diem: <strong>' + score + '</strong></span>') +
             '<div class="game-body" style="max-width:680px;width:100%;margin:0 auto;">' +
+            '<div style="width:100%;height:6px;background:rgba(0,0,0,.08);border-radius:3px;margin-bottom:16px;">' +
+            '<div style="height:100%;width:' + Math.round(qIndex / questions.length * 100) + '%;background:var(--theme-primary);border-radius:3px;"></div></div>' +
             qImg(q) + gvBadge(q) +
             '<div style="display:flex;gap:8px;align-items:flex-start;"><div class="game-q-text" style="flex:1;">' + esc(q.question) + '</div>' + speakBtn(q.question) + '</div><div style="width:100%;">' +
             (q.answers || []).map(function (a, i) {
@@ -334,6 +357,7 @@ export const ExportEngine = {
           var btns = root.querySelectorAll('.game-option-btn');
           function answer(idx) {
             var ok = idx === q.correctAnswer;
+            picks.push({ question: q.question, picked: idx >= 0 ? (q.answers || [])[idx] : 'Het gio', right: (q.answers || [])[q.correctAnswer], ok: ok });
             for (var k = 0; k < btns.length; k++) {
               btns[k].disabled = true;
               if (k === q.correctAnswer) btns[k].classList.add('correct');
@@ -356,11 +380,12 @@ export const ExportEngine = {
 
       /* ---- TRUE/FALSE ---- */
       function runTrueFalse() {
+        var streak = 0;
         function showQ() {
           var q = questions[qIndex];
           if (!q) { document.onkeydown = null; finishScreen(); return; }
           root.innerHTML = header('Menh de ' + (qIndex + 1) + ' / ' + questions.length,
-            '<span>Diem: <strong>' + score + '</strong></span>') +
+            '<span>Diem: <strong>' + score + '</strong>' + (streak >= 2 ? ' • Chuoi ' + streak : '') + '</span>') +
             '<div class="game-body text-center" style="max-width:600px;margin:0 auto;width:100%;">' +
             qImg(q) + gvBadge(q) +
             '<div style="display:flex;gap:8px;align-items:flex-start;"><div class="game-q-text" style="flex:1;">“' + esc(q.question) + '”</div>' + speakBtn(q.question) + '</div>' +
@@ -371,9 +396,16 @@ export const ExportEngine = {
           function pick(c) {
             var ok = c === (q.correctAnswer || 0);
             document.getElementById('bT').disabled = true; document.getElementById('bF').disabled = true;
-            if (ok) { Sound.playCorrect(); score += (q.points || 10); }
-            else Sound.playWrong();
-            setTimeout(function () { qIndex++; showQ(); }, 1000);
+            if (ok) { Sound.playCorrect(); score += (q.points || 10); streak++; }
+            else { Sound.playWrong(); streak = 0; }
+            if (q.explanation) {
+              var eb = document.createElement('div');
+              eb.style.cssText = 'margin-top:12px;font-size:14px;text-align:left;';
+              eb.innerHTML = '<strong>Giai thich:</strong> ' + esc(q.explanation);
+              var gb = root.querySelector('.game-body');
+              if (gb) gb.appendChild(eb);
+            }
+            setTimeout(function () { qIndex++; showQ(); }, q.explanation ? 2200 : 1000);
           }
           document.getElementById('bT').onclick = function () { pick(0); };
           document.getElementById('bF').onclick = function () { pick(1); };
@@ -411,6 +443,7 @@ export const ExportEngine = {
             '<button class="btn btn-secondary" id="bP">← Truoc</button>' +
             '<button class="btn btn-primary" id="bF">🔄 Lat the</button>' +
             '<button class="btn btn-secondary" id="bN">Sau →</button>' +
+            '<button class="btn btn-secondary btn-sm" id="bS">🎲 Xao</button>' +
             (READ_ALOUD ? '<button class="btn btn-secondary btn-sm" data-speak="' + esc(c.f + '. ' + c.b) + '">🔊 Đọc</button>' : '') +
             '</div></div>' +
             footer('', 'Nhan ✓ khi da thuoc');
@@ -419,6 +452,7 @@ export const ExportEngine = {
           document.getElementById('fc').onclick = tg; document.getElementById('bF').onclick = tg;
           document.getElementById('bP').onclick = function () { if (idx > 0) { idx--; show(); } };
           document.getElementById('bN').onclick = function () { idx++; show(); };
+          document.getElementById('bS').onclick = function () { Sound.playClick(); cards = shuffle(cards); idx = 0; show(); };
           if (PROFILE === 'canva') notifyParent();
         }
         document.onkeydown = function (e) {
@@ -433,7 +467,7 @@ export const ExportEngine = {
         var pairs = pairsFromContent(6);
         if (!pairs.length) { finishScreen('Chua co cap ghep'); return; }
         var left = shuffle(pairs), right = shuffle(pairs);
-        var selL = null, selR = null, matched = {}, mCount = 0;
+        var selL = null, selR = null, matched = {}, mCount = 0, tries = 0, errs = 0;
         function draw() {
           root.innerHTML = header('Ghep doi tuong ung', '<span>Da ghep: <strong>' + mCount + ' / ' + pairs.length + '</strong></span>') +
             '<div class="game-body" style="max-width:760px;margin:0 auto;width:100%;">' +
@@ -444,20 +478,25 @@ export const ExportEngine = {
             }).join('') + '</div><div>' + right.map(function (p) {
               return matched[p.id] ? '<button class="match-btn matched" disabled>✓ ' + esc(p.right) + '</button>'
                 : '<button class="match-btn mr" data-id="' + p.id + '"' + (selR === p.id ? ' style="border-color:var(--theme-primary);"' : '') + '>' + esc(p.right) + '</button>';
-            }).join('') + '</div></div></div>' + footer('Chon 1 muc cot A roi chon muc cot B', score + ' diem');
+            }).join('') + '</div></div></div>' + footer('Chon 1 muc cot A roi chon muc cot B', score + ' diem • Thu ' + tries + ' • Sai ' + errs) +
+            '<div style="text-align:center;padding:8px;"><button class="btn btn-secondary btn-sm" id="mSh">🎲 Xao lai</button></div>';
           var ls = root.querySelectorAll('.ml'), rs = root.querySelectorAll('.mr');
           for (var i = 0; i < ls.length; i++) { (function (b) {
             b.onclick = function () { Sound.playClick(); selL = parseInt(b.getAttribute('data-id'), 10); check(); }; })(ls[i]); }
           for (var j = 0; j < rs.length; j++) { (function (b) {
             b.onclick = function () { Sound.playClick(); selR = parseInt(b.getAttribute('data-id'), 10); check(); }; })(rs[j]); }
+          document.getElementById('mSh').onclick = function () {
+            Sound.playClick(); left = shuffle(left); right = shuffle(right);
+            selL = null; selR = null; draw(); };
           if (PROFILE === 'canva') notifyParent();
         }
         function check() {
           if (selL == null || selR == null) { draw(); return; }
+          tries++;
           if (selL === selR) { Sound.playCorrect(); matched[selL] = true; mCount++; score += 10;
             selL = null; selR = null;
             if (mCount >= pairs.length) { setTimeout(function () { finishScreen(); }, 700); return; } }
-          else { Sound.playWrong(); selL = null; selR = null; }
+          else { Sound.playWrong(); errs++; selL = null; selR = null; }
           draw();
         }
         draw();
@@ -524,7 +563,12 @@ export const ExportEngine = {
                 esc(c.t) + ' (' + items.filter(function (x) { return x.cat === c.id; }).length + ' muc)</div>' +
                 '<div style="display:flex;gap:8px;flex-wrap:wrap;">' + inside + '</div>' +
                 '<button class="btn btn-secondary btn-sm" data-drop="' + c.id + '" style="margin-top:12px;">Chon nhom nay</button></div>';
-            }).join('') + '</div></div>' + footer('Cham 1 the roi cham nhom dich');
+            }).join('') + '</div></div>' + footer('Cham 1 the roi cham nhom dich', 'Da xep ' + placed + '/' + items.length) +
+            '<div style="text-align:center;padding:8px;"><button class="btn btn-secondary btn-sm" id="dRs">↺ Xep lai tu dau</button></div>';
+          document.getElementById('dRs').onclick = function () {
+            Sound.playClick();
+            for (var r = 0; r < items.length; r++) items[r].done = false;
+            items = shuffle(items); picked = null; placed = 0; draw(); };
           var chips = root.querySelectorAll('.drag-chip[data-id]');
           for (var i = 0; i < chips.length; i++) { (function (b) {
             b.onclick = function () { Sound.playClick(); picked = parseInt(b.getAttribute('data-id'), 10); draw(); }; })(chips[i]); }
@@ -549,7 +593,7 @@ export const ExportEngine = {
         var pairs = pairsFromContent(4);
         if (!pairs.length) { finishScreen('Chua co cap noi'); return; }
         var left = shuffle(pairs), right = shuffle(pairs);
-        var sel = null, done = {}, dCount = 0;
+        var sel = null, done = {}, dCount = 0, tries = 0;
         function draw() {
           root.innerHTML = header('Noi y tuong quan', '<span>Da noi: <strong>' + dCount + ' / ' + pairs.length + '</strong></span>') +
             '<div class="game-body" style="max-width:680px;margin:0 auto;width:100%;">' +
@@ -562,7 +606,11 @@ export const ExportEngine = {
             right.map(function (p) { return done[p.id]
               ? '<button class="match-btn matched" disabled>' + esc(p.right) + ' ●</button>'
               : '<button class="match-btn cr" data-id="' + p.id + '">' + esc(p.right) + ' ●</button>'; }).join('') +
-            '</div></div></div>' + footer('Chon trai truoc, phai sau', score + ' diem');
+            '</div></div></div>' + footer('Chon trai truoc, phai sau', score + ' diem • Thu ' + tries) +
+            '<div style="text-align:center;padding:8px;"><button class="btn btn-secondary btn-sm" id="cRs">↺ Noi lai tu dau</button></div>';
+          document.getElementById('cRs').onclick = function () {
+            Sound.playClick();
+            done = {}; sel = null; tries = 0; draw(); };
           var ls = root.querySelectorAll('.cl'), rs = root.querySelectorAll('.cr');
           for (var i = 0; i < ls.length; i++) { (function (b) {
             b.onclick = function () { Sound.playClick(); sel = parseInt(b.getAttribute('data-id'), 10); draw(); }; })(ls[i]); }
@@ -570,6 +618,7 @@ export const ExportEngine = {
             b.onclick = function () {
               if (sel == null) return;
               var r = parseInt(b.getAttribute('data-id'), 10);
+              tries++;
               if (r === sel) { Sound.playCorrect(); done[sel] = true; dCount++; score += 15; sel = null;
                 if (dCount >= pairs.length) { draw(); setTimeout(function () { finishScreen(); }, 700); return; } }
               else Sound.playWrong();
@@ -582,7 +631,7 @@ export const ExportEngine = {
       /* ---- WHEEL ---- */
       function runWheel() {
         var list = wheelItems();
-        var full = list.slice(), ang = 0, spin = false, picked = null;
+        var full = list.slice(), ang = 0, spin = false, picked = null, hist = [];
         var colors = ['#3F5F55', '#D1A153', '#2F7C48', '#0284C7', '#818CF8', '#15803D', '#3B82F6', '#DC2626', '#D97706', '#9E4B37'];
         function draw() {
           root.innerHTML = header('Vong quay may man', '<span>Con lai: <strong>' + list.length + '</strong></span>') +
@@ -594,11 +643,23 @@ export const ExportEngine = {
             (picked ? '🎉 Ket qua: ' + esc(picked) : '') + '</div>' +
             '<div style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap;justify-content:center;">' +
             '<button class="btn btn-primary btn-lg" id="wSpin">🎯 Quay ngay!</button>' +
-            (picked ? '<button class="btn btn-secondary" id="wDel">✕ Bo muc nay</button>' : '') + '</div></div>' +
+            (picked ? '<button class="btn btn-secondary" id="wDel">✕ Bo muc nay</button>' : '') + '</div>' +
+            '<div style="display:flex;gap:8px;margin-top:12px;max-width:420px;width:100%;">' +
+            '<input id="wAdd" placeholder="Them ten/muc moi..." style="flex:1;padding:8px 12px;border:2px solid var(--theme-border);border-radius:8px;font-size:14px;">' +
+            '<button class="btn btn-secondary" id="wAddB">+ Them</button></div>' +
+            (hist.length ? '<div style="margin-top:10px;font-size:13px;">Da trung: ' + hist.map(function (h) { return esc(h); }).join(' • ') + '</div>' : '') +
+            '</div>' +
             footer('Nhan QUAY hoac phim Space', '');
           paint();
           document.getElementById('wGo').onclick = doSpin;
           document.getElementById('wSpin').onclick = doSpin;
+          function addName() {
+            var v = document.getElementById('wAdd').value.trim().slice(0, 30);
+            if (!v) return;
+            Sound.playClick(); list.push(v); picked = null; draw();
+          }
+          document.getElementById('wAddB').onclick = addName;
+          document.getElementById('wAdd').onkeydown = function (e) { e.stopPropagation(); if (e.key === 'Enter') addName(); };
           var d = document.getElementById('wDel');
           if (d) d.onclick = function () { list = list.filter(function (x) { return x !== picked; }); picked = null; draw(); };
           document.onkeydown = function (e) { if (e.key === ' ') doSpin(); };
@@ -632,6 +693,7 @@ export const ExportEngine = {
             else { spin = false; Sound.playCheer();
               var na = (1.5 * Math.PI - (ang % (Math.PI * 2)) + Math.PI * 4) % (Math.PI * 2);
               picked = list[Math.floor(na / slice) % list.length];
+              if (hist.indexOf(picked) < 0) hist.push(picked);
               score += 10; draw(); }
           }
           requestAnimationFrame(fr);
@@ -646,7 +708,7 @@ export const ExportEngine = {
           { question: 'Thu do Viet Nam?', answers: ['Ha Noi', 'Hue', 'Da Nang', 'Can Tho'], correctAnswer: 0 },
           { question: 'So lien sau 99?', answers: ['100', '98', '101', '90'], correctAnswer: 0 },
           { question: '1 tuan may ngay?', answers: ['7', '5', '6', '8'], correctAnswer: 0 }];
-        var open = {}, n = 0, qi = 0;
+        var open = {}, n = 0, qi = 0, tries = 0;
         var total = Math.min(9, Math.max(4, qs.length));
         qs = qs.slice(0, total);
         var gCols = Math.ceil(Math.sqrt(total));
@@ -675,14 +737,20 @@ export const ExportEngine = {
             (q.answers || []).map(function (a, i) {
               return '<button class="game-option-btn" data-i="' + i + '"><span class="game-option-letter">' +
                 String.fromCharCode(65 + i) + '</span><span>' + esc(a) + '</span></button>'; }).join('') +
-            '</div></div>' + footer('Tra loi dung de mo manh ghep');
+            '</div></div>' + footer('Tra loi dung de mo manh ghep • Luot thu: ' + tries);
           var bs = root.querySelectorAll('.game-option-btn');
           for (var k = 0; k < bs.length; k++) { (function (i) {
             bs[i].onclick = function () {
+              tries++;
               if (i === q.correctAnswer) { Sound.playCorrect(); bs[i].classList.add('correct');
                 open[n] = true; n++; score += 15;
                 setTimeout(function () { qi++; draw(); }, 800); }
-              else { Sound.playWrong(); bs[i].classList.add('incorrect'); } }; })(k); }
+              else { Sound.playWrong(); bs[i].classList.add('incorrect');
+                var fz = root.querySelectorAll('.game-footer span');
+                for (var z = 0; z < fz.length; z++) {
+                  if (fz[z].textContent.indexOf('Luot thu') >= 0) fz[z].textContent = 'Tra loi dung de mo manh ghep • Luot thu: ' + tries;
+                }
+                setTimeout(function () { bs[i].classList.remove('incorrect'); }, 600); } }; })(k); }
           if (PROFILE === 'canva') notifyParent();
         }
         draw();
@@ -690,7 +758,7 @@ export const ExportEngine = {
 
       /* ---- CROSSWORD (dùng đáp án đúng của GV, không còn chữ cứng) ---- */
       function runCrossword() {
-        var words = crosswordWords(), solved = {}, sCount = 0;
+        var words = crosswordWords(), solved = {}, hinted = {}, sCount = 0;
         function draw() {
           root.innerHTML = header('Giai o chu vui', '<span>Da giai: <strong>' + sCount + ' / ' + words.length + '</strong></span>') +
             '<div class="game-body" style="max-width:680px;margin:0 auto;width:100%;gap:12px;">' +
@@ -702,7 +770,9 @@ export const ExportEngine = {
                 '<input class="cross-input" data-id="' + w.id + '" maxlength="' + w.answer.length + '" placeholder="' +
                 w.answer.length + ' ky tu"' + (solved[w.id] ? ' value="' + esc(w.answer) + '" disabled' : '') + '>' +
                 '<button class="btn btn-primary btn-sm" data-check="' + w.id + '"' + (solved[w.id] ? ' disabled' : '') + '>' +
-                (solved[w.id] ? '✓ Da giai' : 'Kiem tra') + '</button></div></div>'; }).join('') +
+                (solved[w.id] ? '✓ Da giai' : 'Kiem tra') + '</button>' +
+                ((!solved[w.id] && !hinted[w.id]) ? '<button class="btn btn-secondary btn-sm" data-hint="' + w.id + '">💡 Goi y</button>' : '') +
+                '</div></div>'; }).join('') +
             '</div>' + footer('Nhap khong dau, in hoa', score + ' diem');
           var cs = root.querySelectorAll('[data-check]');
           for (var i = 0; i < cs.length; i++) { (function (b) {
@@ -711,10 +781,20 @@ export const ExportEngine = {
               for (var k = 0; k < words.length; k++) if (words[k].id === id) w = words[k];
               var inp = root.querySelector('.cross-input[data-id="' + id + '"]');
               if (!w || !inp) return;
-              if (norm(inp.value) === w.answer) { Sound.playCorrect(); solved[id] = true; sCount++; score += 20;
+              if (norm(inp.value) === w.answer) { Sound.playCorrect(); solved[id] = true; sCount++; score += (hinted[id] ? 10 : 20);
                 if (sCount >= words.length) { draw(); setTimeout(function () { finishScreen(); }, 700); return; }
                 draw(); }
               else { Sound.playWrong(); inp.style.borderColor = '#B45454'; } }; })(cs[i]); }
+          var hs = root.querySelectorAll('[data-hint]');
+          for (var hI = 0; hI < hs.length; hI++) { (function (b) {
+            b.onclick = function () {
+              var id = parseInt(b.getAttribute('data-hint'), 10), w = null;
+              for (var k = 0; k < words.length; k++) if (words[k].id === id) w = words[k];
+              var inp = root.querySelector('.cross-input[data-id="' + id + '"]');
+              if (!w || !inp || hinted[id]) return;
+              Sound.playClick(); hinted[id] = true;
+              inp.value = w.answer.charAt(0); inp.focus();
+              b.disabled = true; b.textContent = '💡 Da goi y (-10d)'; }; })(hs[hI]); }
           if (PROFILE === 'canva') notifyParent();
         }
         draw();
@@ -723,31 +803,49 @@ export const ExportEngine = {
       /* ---- TIMER ---- */
       function runTimer() {
         var total = (project.settings && project.settings.timerSeconds) || 180;
-        var left = total, run = false, tick = null;
+        var left = total, up = 0, mode = 'down', run = false, tick = null;
         function fmt(s) { var m = Math.floor(s / 60), ss = s % 60;
           return (m < 10 ? '0' : '') + m + ':' + (ss < 10 ? '0' : '') + ss; }
         root.innerHTML = header('Dong ho dem nguoc', '<span>' + esc(project.name || '') + '</span>') +
           '<div class="game-body text-center"><div class="big-timer" id="tD">' + fmt(left) + '</div>' +
-          '<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:20px;">' +
+          '<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:12px;">' +
           [60, 120, 180, 300, 600].map(function (s) {
             return '<button class="btn btn-secondary btn-sm" data-t="' + s + '">' + (s / 60) + ' phut</button>'; }).join('') +
-          '</div><div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">' +
+          '</div><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;align-items:center;margin-bottom:20px;">' +
+          '<input id="tMin" type="number" min="1" max="120" value="3" style="width:80px;padding:8px 10px;border:2px solid var(--theme-border);border-radius:8px;">' +
+          '<button class="btn btn-secondary btn-sm" id="tSet">Dat phut</button>' +
+          '<button class="btn btn-secondary btn-sm" id="tMode">⏳ Dem nguoc</button></div>' +
+          '<div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">' +
           '<button class="btn btn-primary btn-lg" id="tGo">▶ Bat dau</button>' +
           '<button class="btn btn-secondary btn-lg" id="tRs">🔄 Dat lai</button></div></div>' +
-          footer('Chuong reo khi het gio');
+          footer('Chuong reo 3 lan khi het gio');
         var d = document.getElementById('tD'), go = document.getElementById('tGo');
         function stop() { if (tick) { clearInterval(tick); tick = null; } }
+        function showT() { d.textContent = fmt(mode === 'up' ? up : left); }
+        function bell3() { Sound.playBell(); setTimeout(function () { Sound.playBell(); }, 900); setTimeout(function () { Sound.playBell(); }, 1800); }
         go.onclick = function () {
           run = !run; Sound.playClick(); go.innerHTML = run ? '⏸ Tam dung' : '▶ Tiep tuc';
           stop();
           if (run) tick = setInterval(function () {
+            if (mode === 'up') { up++; d.textContent = fmt(up); return; }
             if (left > 0) { left--; d.textContent = fmt(left);
               if (left <= 10) { d.style.color = '#B45454'; Sound.playTick(); } }
-            else { stop(); run = false; Sound.playBell(); d.textContent = 'HET GIO! 🔔'; go.innerHTML = '▶ Bat dau lai'; }
+            else { stop(); run = false; bell3(); d.textContent = 'HET GIO! 🔔'; d.style.color = '#B45454'; go.innerHTML = '▶ Bat dau lai'; }
           }, 1000);
         };
-        document.getElementById('tRs').onclick = function () { stop(); run = false; left = total;
-          d.textContent = fmt(left); d.style.color = ''; go.innerHTML = '▶ Bat dau'; };
+        document.getElementById('tRs').onclick = function () { stop(); run = false; left = total; up = 0;
+          d.textContent = fmt(mode === 'up' ? 0 : left); d.style.color = ''; go.innerHTML = '▶ Bat dau'; };
+        document.getElementById('tSet').onclick = function () {
+          Sound.playClick();
+          var mins = Math.min(120, Math.max(1, parseInt(document.getElementById('tMin').value, 10) || 3));
+          stop(); run = false; total = mins * 60; left = total; up = 0;
+          d.textContent = fmt(mode === 'up' ? 0 : left); d.style.color = ''; go.innerHTML = '▶ Bat dau'; };
+        document.getElementById('tMode').onclick = function () {
+          Sound.playClick(); stop(); run = false;
+          mode = mode === 'down' ? 'up' : 'down';
+          left = total; up = 0;
+          document.getElementById('tMode').textContent = mode === 'down' ? '⏳ Dem nguoc' : '⏱️ Dem len';
+          d.textContent = fmt(mode === 'up' ? 0 : left); d.style.color = ''; go.innerHTML = '▶ Bat dau'; };
         var ps = root.querySelectorAll('[data-t]');
         for (var i = 0; i < ps.length; i++) { (function (b) {
           b.onclick = function () { stop(); run = false; total = parseInt(b.getAttribute('data-t'), 10);
@@ -782,7 +880,7 @@ export const ExportEngine = {
           }
           var q = qs[qi], tn = team === 'blue' ? 'DOI XANH' : 'DOI DO';
           var tc = team === 'blue' ? '#2563EB' : '#DC2626';
-          root.innerHTML = header('Keo co dong doi', '<span><strong style="color:#2563EB;">🔵 ' + bS + '</strong> - <strong style="color:#DC2626;">' + rS + ' 🔴</strong></span> <span class="badge" style="background:' + tc + ';color:#fff;">LUOT: ' + tn + '</span>') +
+          root.innerHTML = header('Keo co dong doi', '<span>Cau ' + Math.min(qi + 1, qs.length) + '/' + qs.length + ' • Dich ' + goal + '</span> <span><strong style="color:#2563EB;">🔵 ' + bS + '</strong> - <strong style="color:#DC2626;">' + rS + ' 🔴</strong></span> <span class="badge" style="background:' + tc + ';color:#fff;">LUOT: ' + tn + '</span>') +
             '<div class="game-body" style="max-width:800px;margin:0 auto;width:100%;">' +
             '<div style="width:100%;height:90px;background:var(--theme-surface);border:2px solid var(--theme-border);border-radius:16px;position:relative;display:flex;align-items:center;justify-content:center;margin-bottom:20px;overflow:hidden;">' +
             '<div style="position:absolute;width:2px;height:100%;background:#94A3B8;left:50%;"></div>' +
@@ -822,9 +920,14 @@ export const ExportEngine = {
           { question: '1 tuan may ngay?', answers: ['5', '6', '7', '8'], correctAnswer: 2 }];
         var qi = 0, prog = 0, okCount = 0;
         var step = 100 / qs.length;
+        var t0 = Date.now();
         function draw() {
           var q = qs[qi];
-          if (!q || prog >= 100) { finishScreen('Ve dich! 🏁', 'Hoan thanh duong dua'); return; }
+          if (!q || prog >= 100) {
+            var secs = Math.max(1, Math.round((Date.now() - t0) / 1000));
+            finishScreen('Ve dich! 🏁', 'Dung ' + okCount + '/' + qs.length + ' cau • ' + Math.floor(secs / 60) + ':' + String(secs % 60).padStart(2, '0'));
+            return;
+          }
           root.innerHTML = header('Dua xe toc do', '<span>Dung ' + okCount + '/' + qs.length + ' cau • Quang duong: <strong>' + Math.floor(Math.min(100, prog)) + '%</strong></span>') +
             '<div class="game-body" style="max-width:800px;margin:0 auto;width:100%;">' +
             '<div style="width:100%;height:80px;background:#334155;border-radius:12px;position:relative;overflow:hidden;margin-bottom:20px;border:3px solid #1E293B;">' +

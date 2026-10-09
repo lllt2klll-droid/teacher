@@ -17,6 +17,7 @@ export class WheelGame extends BaseGame {
     this.currentAngle = 0;
     this.isSpinning = false;
     this.selectedItem = null;
+    this.history = [];
     this.state = 'playing';
 
     this.renderWheelScreen();
@@ -56,6 +57,17 @@ export class WheelGame extends BaseGame {
           </button>
         </div>
 
+        <!-- Quick add + history -->
+        <div style="display: flex; gap: 8px; margin-top: 16px; max-width: 420px; width: 100%;">
+          <input type="text" class="input" id="inp-add-wheel" placeholder="Thêm tên/mục mới..." style="flex: 1;">
+          <button class="btn btn-secondary" id="btn-add-wheel">+ Thêm</button>
+        </div>
+        ${this.history.length ? `
+          <div style="margin-top: 12px; font-size: 13px; color: var(--theme-text-subtle); max-width: 420px;">
+            Đã quay trúng: ${this.history.map(h => `<span class="badge" style="margin: 2px;">${h}</span>`).join('')}
+          </div>
+        ` : ''}
+
       </div>
 
       <div class="game-footer">
@@ -94,6 +106,22 @@ export class WheelGame extends BaseGame {
 
     resetBtn.onclick = () => {
       this.start();
+    };
+
+    const addInp = this.viewportEl.querySelector('#inp-add-wheel');
+    const addBtn = this.viewportEl.querySelector('#btn-add-wheel');
+    const doAdd = () => {
+      const name = (addInp.value || '').trim().slice(0, 30);
+      if (!name) return;
+      Sound.playClick();
+      this.optionsList.push(name);
+      this.selectedItem = null;
+      this.renderWheelScreen();
+    };
+    addBtn.onclick = doAdd;
+    addInp.onkeydown = (e) => {
+      if (e.key === 'Enter') doAdd();
+      e.stopPropagation();
     };
 
     this.bindKeyboard();
@@ -207,6 +235,9 @@ export class WheelGame extends BaseGame {
     const normalizedAngle = (1.5 * Math.PI - (this.currentAngle % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
     const index = Math.floor(normalizedAngle / arc) % num;
     this.selectedItem = this.optionsList[index];
+    if (!this.history.includes(this.selectedItem)) {
+      this.history.push(this.selectedItem);
+    }
 
     const banner = this.viewportEl.querySelector('#wheel-result-banner');
     const removeBtn = this.viewportEl.querySelector('#btn-remove-picked');
@@ -216,5 +247,15 @@ export class WheelGame extends BaseGame {
     if (removeBtn) {
       removeBtn.style.display = 'inline-flex';
     }
+    // Cap nhat lich su trung ngay duoi nut quay
+    let histEl = this.viewportEl.querySelector('#wheel-history');
+    if (!histEl) {
+      histEl = document.createElement('div');
+      histEl.id = 'wheel-history';
+      histEl.style.cssText = 'margin-top: 12px; font-size: 13px; max-width: 420px;';
+      const body = this.viewportEl.querySelector('.game-body');
+      if (body) body.appendChild(histEl);
+    }
+    histEl.innerHTML = `Đã quay trúng: ${this.history.map(h => `<span class="badge" style="margin: 2px;">${h}</span>`).join('')}`;
   }
 }

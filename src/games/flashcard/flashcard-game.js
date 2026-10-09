@@ -16,7 +16,7 @@ export class FlashcardGame extends BaseGame {
     }));
     this.currentCardIndex = 0;
     this.isFlipped = false;
-    this.masteredCount = 0;
+    this.masteredSet = new Set();
     this.state = 'playing';
     // Phim Space lat the, mui ten chuyen the (tu don khi destroy nho BaseGame)
     this.bindKey((e) => {
@@ -50,7 +50,7 @@ export class FlashcardGame extends BaseGame {
     this.viewportEl.innerHTML = `
       <div class="game-header">
         <span class="badge badge-primary">Thẻ ${currentNum} / ${total}</span>
-        <span style="font-size: 13px; color: var(--theme-text-subtle);">Đã ghi nhớ: <strong style="color: var(--theme-primary);">${this.masteredCount}</strong> thẻ</span>
+        <span style="font-size: 13px; color: var(--theme-text-subtle);">Đã ghi nhớ: <strong style="color: var(--theme-primary);">${this.masteredSet.size}</strong>/${this.cards.length} thẻ</span>
       </div>
 
       <div class="game-body" style="max-width: 500px; margin: 0 auto; width: 100%; text-align: center;">
@@ -79,6 +79,7 @@ export class FlashcardGame extends BaseGame {
           <button class="btn btn-secondary" id="btn-prev-card" ${this.currentCardIndex === 0 ? 'disabled' : ''}>← Trước</button>
           <button class="btn btn-primary" id="btn-flip-card">🔄 Lật thẻ</button>
           <button class="btn btn-secondary" id="btn-next-card">Sau →</button>
+          <button class="btn btn-secondary btn-sm" id="btn-shuffle-cards" title="Xáo trộn thứ tự thẻ">🎲 Xáo</button>
           ${this.options.readAloud !== false ? `<button class="btn btn-secondary btn-sm btn-speak" data-speak="${escHtml(card.front + '. ' + card.back)}" title="Đọc to thẻ này">🔊 Đọc</button>` : ''}
         </div>
       </div>
@@ -122,10 +123,23 @@ export class FlashcardGame extends BaseGame {
     };
 
     masteredBtn.onclick = () => {
-      Sound.playCorrect();
-      this.masteredCount++;
-      this.score += 10;
+      // Chi cong diem 1 lan cho moi the (quay lai the cu khong cong nua)
+      if (!this.masteredSet.has(this.currentCardIndex)) {
+        Sound.playCorrect();
+        this.masteredSet.add(this.currentCardIndex);
+        this.score += 10;
+      }
       nextBtn.click();
     };
+
+    const shuffleBtn = this.viewportEl.querySelector('#btn-shuffle-cards');
+    if (shuffleBtn) {
+      shuffleBtn.onclick = () => {
+        Sound.playClick();
+        this.cards = [...this.cards].sort(() => Math.random() - 0.5);
+        this.currentCardIndex = 0;
+        this.renderCard();
+      };
+    }
   }
 }

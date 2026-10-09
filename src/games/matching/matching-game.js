@@ -28,6 +28,8 @@ export class MatchingGame extends BaseGame {
     this.selectedLeft = null;
     this.selectedRight = null;
     this.matchedIds = new Set();
+    this.attempts = 0;
+    this.mistakes = 0;
     this.score = 0;
     this.state = 'playing';
 
@@ -78,11 +80,23 @@ export class MatchingGame extends BaseGame {
       </div>
 
       <div class="game-footer">
-        <span style="font-size: 13px; color: var(--theme-text-subtle);">Điểm tích lũy: ${this.score}đ</span>
+        <span style="font-size: 13px; color: var(--theme-text-subtle);">Điểm: ${this.score}đ • Lượt thử: ${this.attempts} • Sai: ${this.mistakes}</span>
+        <button class="btn btn-secondary btn-sm" id="btn-reshuffle-match">🎲 Xáo lại</button>
       </div>
     `;
 
     this.bindEvents();
+    const reshuffleBtn = this.viewportEl.querySelector('#btn-reshuffle-match');
+    if (reshuffleBtn) {
+      reshuffleBtn.onclick = () => {
+        Sound.playClick();
+        this.leftItems = [...this.leftItems].sort(() => Math.random() - 0.5);
+        this.rightItems = [...this.rightItems].sort(() => Math.random() - 0.5);
+        this.selectedLeft = null;
+        this.selectedRight = null;
+        this.renderBoard();
+      };
+    }
   }
 
   bindEvents() {
@@ -112,6 +126,7 @@ export class MatchingGame extends BaseGame {
 
   checkMatch() {
     if (this.selectedLeft === null || this.selectedRight === null) return;
+    this.attempts++;
 
     if (this.selectedLeft === this.selectedRight) {
       // Match found!
@@ -129,6 +144,7 @@ export class MatchingGame extends BaseGame {
     } else {
       // Incorrect
       Sound.playWrong();
+      this.mistakes++;
       const lBtn = this.viewportEl.querySelector(`.left-btn[data-id="${this.selectedLeft}"]`);
       const rBtn = this.viewportEl.querySelector(`.right-btn[data-id="${this.selectedRight}"]`);
       if (lBtn) lBtn.style.borderColor = '#B45454';
@@ -137,8 +153,7 @@ export class MatchingGame extends BaseGame {
       setTimeout(() => {
         this.selectedLeft = null;
         this.selectedRight = null;
-        if (lBtn) lBtn.style.borderColor = 'var(--theme-border)';
-        if (rBtn) rBtn.style.borderColor = 'var(--theme-border)';
+        this.renderBoard();
       }, 700);
     }
   }

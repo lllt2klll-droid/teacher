@@ -73,10 +73,21 @@ export class DragDropGame extends BaseGame {
 
       <div class="game-footer">
         <span style="font-size: 13px; color: var(--theme-text-subtle);">Kéo hoặc nhấp vào thẻ rồi nhấp vào ô đích tương ứng</span>
+        <button class="btn btn-secondary btn-sm" id="btn-reset-drag">↺ Xếp lại từ đầu</button>
       </div>
     `;
 
     this.bindDragEvents();
+    const resetBtn = this.viewportEl.querySelector('#btn-reset-drag');
+    if (resetBtn) {
+      resetBtn.onclick = () => {
+        Sound.playClick();
+        this.placedCount = 0;
+        this.score = 0;
+        this.items = [...this.items].sort(() => Math.random() - 0.5);
+        this.renderBoard();
+      };
+    }
   }
 
   bindDragEvents() {

@@ -18,6 +18,7 @@ export class RaceGame extends BaseGame {
     this.currentQIndex = 0;
     this.score = 0;
     this.correctCount = 0;
+    this.startTime = Date.now();
     // Tien % theo tong so cau: dung het = ve dich (khong con +25% cung)
     this.step = 100 / this.questions.length;
     this.playerProgress = 0; // 0 to 100%
@@ -32,7 +33,6 @@ export class RaceGame extends BaseGame {
       this.finish();
       return;
     }
-
     this.viewportEl.innerHTML = `
       <div class="game-header">
         <span class="badge badge-primary">Đua xe tốc độ</span>
@@ -101,5 +101,37 @@ export class RaceGame extends BaseGame {
         setTimeout(() => this.renderTrack(), 900);
       };
     });
+  }
+
+  renderResultScreen() {
+    const secs = Math.max(1, Math.round((Date.now() - (this.startTime || Date.now())) / 1000));
+    const total = this.questions.length || 1;
+    const acc = Math.round(this.correctCount / total * 100);
+    const mm = Math.floor(secs / 60);
+    const ss = String(secs % 60).padStart(2, '0');
+    this.viewportEl.innerHTML = `
+      <div class="game-header">
+        <span class="font-semibold">Về đích! 🏁</span>
+        <span class="badge badge-success">Hoàn thành!</span>
+      </div>
+      <div class="game-body text-center">
+        <div style="font-size: 48px; margin-bottom: 12px;">🏁</div>
+        <h2 style="font-size: 26px; margin-bottom: 8px;">Đúng ${this.correctCount}/${total} câu (${acc}%)</h2>
+        <p style="font-size: 16px; color: var(--theme-text-subtle); margin-bottom: 24px;">
+          Thời gian: <strong>${mm}:${ss}</strong> • Điểm số: <strong style="color: var(--theme-primary); font-size: 24px;">${this.score}</strong> điểm
+        </p>
+        <button class="btn btn-primary btn-lg" id="btn-restart-game">
+          🔄 Đua lại từ đầu
+        </button>
+      </div>
+      <div class="game-footer">
+        <span style="font-size: 13px; color: var(--theme-text-subtle);">TeacherStudio</span>
+      </div>
+    `;
+
+    const restartBtn = this.viewportEl.querySelector('#btn-restart-game');
+    if (restartBtn) {
+      restartBtn.onclick = () => this.restart();
+    }
   }
 }

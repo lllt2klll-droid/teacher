@@ -22,6 +22,7 @@ export class ConnectGame extends BaseGame {
 
     this.selectedLeft = null;
     this.connected = new Set();
+    this.attempts = 0;
     this.score = 0;
     this.state = 'playing';
 
@@ -70,11 +71,22 @@ export class ConnectGame extends BaseGame {
       </div>
 
       <div class="game-footer">
-        <span style="font-size: 13px; color: var(--theme-text-subtle);">Điểm số: ${this.score}đ</span>
+        <span style="font-size: 13px; color: var(--theme-text-subtle);">Điểm số: ${this.score}đ • Lượt thử: ${this.attempts}</span>
+        <button class="btn btn-secondary btn-sm" id="btn-reset-connect">↺ Nối lại từ đầu</button>
       </div>
     `;
 
     this.bindEvents();
+    const resetBtn = this.viewportEl.querySelector('#btn-reset-connect');
+    if (resetBtn) {
+      resetBtn.onclick = () => {
+        Sound.playClick();
+        this.connected = new Set();
+        this.selectedLeft = null;
+        this.attempts = 0;
+        this.renderBoard();
+      };
+    }
   }
 
   bindEvents() {
@@ -94,6 +106,7 @@ export class ConnectGame extends BaseGame {
       node.onclick = () => {
         if (this.selectedLeft === null) return;
         const rightId = parseInt(node.getAttribute('data-id'), 10);
+        this.attempts++;
 
         if (this.selectedLeft === rightId) {
           Sound.playCorrect();
@@ -110,7 +123,8 @@ export class ConnectGame extends BaseGame {
           Sound.playWrong();
           node.style.borderColor = '#B45454';
           setTimeout(() => {
-            node.style.borderColor = 'var(--theme-border)';
+            this.selectedLeft = null;
+            this.renderBoard();
           }, 600);
         }
       };

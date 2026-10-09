@@ -9,6 +9,8 @@ export class TimerGame extends BaseGame {
   start() {
     this.totalSeconds = this.options.timerSeconds || 180; // Default 3 mins
     this.remainingSeconds = this.totalSeconds;
+    this.elapsedSeconds = 0;
+    this.mode = 'down'; // 'down' | 'up'
     this.isRunning = false;
     this.state = 'playing';
 
@@ -36,12 +38,19 @@ export class TimerGame extends BaseGame {
         </div>
 
         <!-- Presets -->
-        <div class="flex gap-2" style="margin-bottom: 24px; flex-wrap: wrap; justify-content: center;">
+        <div class="flex gap-2" style="margin-bottom: 16px; flex-wrap: wrap; justify-content: center;">
           <button class="btn btn-secondary btn-sm preset-btn" data-time="60">1 phút</button>
           <button class="btn btn-secondary btn-sm preset-btn" data-time="120">2 phút</button>
           <button class="btn btn-secondary btn-sm preset-btn" data-time="180">3 phút</button>
           <button class="btn btn-secondary btn-sm preset-btn" data-time="300">5 phút</button>
           <button class="btn btn-secondary btn-sm preset-btn" data-time="600">10 phút</button>
+        </div>
+
+        <!-- Custom minutes + mode -->
+        <div class="flex gap-2" style="margin-bottom: 24px; flex-wrap: wrap; justify-content: center; align-items: center;">
+          <input type="number" class="input" id="inp-custom-min" min="1" max="120" value="3" style="width: 90px;" title="Số phút tùy chỉnh">
+          <button class="btn btn-secondary btn-sm" id="btn-custom-min">Đặt phút</button>
+          <button class="btn btn-secondary btn-sm" id="btn-timer-mode" title="Đổi đếm ngược / đếm lên">⏳ Đếm ngược</button>
         </div>
 
         <!-- Controls -->
@@ -65,6 +74,9 @@ export class TimerGame extends BaseGame {
     const resetBtn = this.viewportEl.querySelector('#btn-reset-timer');
     const presetBtns = this.viewportEl.querySelectorAll('.preset-btn');
     const display = this.viewportEl.querySelector('#big-timer-display');
+    const customInp = this.viewportEl.querySelector('#inp-custom-min');
+    const customBtn = this.viewportEl.querySelector('#btn-custom-min');
+    const modeBtn = this.viewportEl.querySelector('#btn-timer-mode');
 
     toggleBtn.onclick = () => {
       this.isRunning = !this.isRunning;
@@ -82,10 +94,41 @@ export class TimerGame extends BaseGame {
       this.stopTimer();
       this.isRunning = false;
       this.remainingSeconds = this.totalSeconds;
-      display.textContent = formatTime(this.remainingSeconds);
+      this.elapsedSeconds = 0;
+      display.textContent = formatTime(this.mode === 'up' ? 0 : this.remainingSeconds);
       display.style.color = 'var(--theme-primary)';
       toggleBtn.innerHTML = '▶ Bắt đầu';
     };
+
+    if (customBtn) {
+      customBtn.onclick = () => {
+        Sound.playClick();
+        const mins = Math.min(120, Math.max(1, parseInt(customInp.value, 10) || 3));
+        this.stopTimer();
+        this.isRunning = false;
+        this.totalSeconds = mins * 60;
+        this.remainingSeconds = this.totalSeconds;
+        this.elapsedSeconds = 0;
+        display.textContent = formatTime(this.mode === 'up' ? 0 : this.remainingSeconds);
+        display.style.color = 'var(--theme-primary)';
+        toggleBtn.innerHTML = '▶ Bắt đầu';
+      };
+    }
+
+    if (modeBtn) {
+      modeBtn.onclick = () => {
+        Sound.playClick();
+        this.stopTimer();
+        this.isRunning = false;
+        this.mode = this.mode === 'down' ? 'up' : 'down';
+        this.remainingSeconds = this.totalSeconds;
+        this.elapsedSeconds = 0;
+        modeBtn.textContent = this.mode === 'down' ? '⏳ Đếm ngược' : '⏱️ Đếm lên';
+        display.textContent = formatTime(this.mode === 'up' ? 0 : this.remainingSeconds);
+        display.style.color = 'var(--theme-primary)';
+        toggleBtn.innerHTML = '▶ Bắt đầu';
+      };
+    }
 
     presetBtns.forEach(btn => {
       btn.onclick = () => {
@@ -106,6 +149,15 @@ export class TimerGame extends BaseGame {
     const display = this.viewportEl.querySelector('#big-timer-display');
 
     this.timer = setInterval(() => {
+      if (this.mode === 'up') {
+        this.elapsedSeconds++;
+        const m = Math.floor(this.elapsedSeconds / 60);
+        const s = this.elapsedSeconds % 60;
+        if (display) {
+          display.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        }
+        return;
+      }
       if (this.remainingSeconds > 0) {
         this.remainingSeconds--;
         const m = Math.floor(this.remainingSeconds / 60);
@@ -120,7 +172,10 @@ export class TimerGame extends BaseGame {
       } else {
         this.stopTimer();
         this.isRunning = false;
+        // Chuong reo 3 lan cho ca lop nghe ro
         Sound.playBell();
+        setTimeout(() => Sound.playBell(), 900);
+        setTimeout(() => Sound.playBell(), 1800);
         if (display) {
           display.textContent = 'HẾT GIỜ! 🔔';
           display.style.color = '#B45454';
