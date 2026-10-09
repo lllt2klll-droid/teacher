@@ -8,7 +8,7 @@ import { GameRegistry } from '../core/game-registry.js';
 import { TEMPLATES } from '../core/template-engine.js';
 import { Dialogs } from '../ui/dialogs.js';
 import { Notifications } from '../ui/notifications.js';
-import { Icons } from '../ui/icons.js';
+import { Icons, avatarFor } from '../ui/icons.js';
 import { EventBus } from '../core/event-bus.js';
 
 export const DashboardView = {
@@ -16,42 +16,75 @@ export const DashboardView = {
     const projects = await Storage.getProjects();
     const sortedProjects = [...projects].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
     const recentProject = sortedProjects[0] || null;
+    const contents = await Storage.getContents();
+    const questionCount = contents.reduce((s, c) => s + ((c.questions || []).length), 0);
+    const hour = new Date().getHours();
+    const daypart = hour < 10 ? 'buổi sáng' : (hour < 13 ? 'buổi trưa' : (hour < 18 ? 'buổi chiều' : 'buổi tối'));
+    const today = new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'numeric' });
 
     container.innerHTML = `
-      <div class="view-header" style="margin-bottom: 28px;">
-        <div style="font-size: 14px; color: var(--color-text-secondary); margin-bottom: 4px;">Chào mừng Thầy/Cô trở lại</div>
-        <h1 style="font-size: 26px; font-weight: 700; color: var(--color-text);">Chào Thầy/Cô 👋</h1>
-        <p style="color: var(--color-text-secondary); font-size: 14px; margin-top: 4px;">
-          Tạo hoạt động tương tác sinh động cho lớp học một cách nhẹ nhàng, nhanh chóng và chuyên nghiệp.
-        </p>
+      <div class="page-head">
+        <div class="page-head-row">
+          <div>
+            <div class="eyebrow">${today}</div>
+            <h1>Chào ${daypart}, Thầy/Cô</h1>
+            <p class="page-desc">Tạo hoạt động tương tác sinh động cho lớp học một cách nhẹ nhàng, nhanh chóng và chuyên nghiệp.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-ic">${Icons.get('folder')}</div>
+          <div><div class="stat-val">${projects.length}</div><div class="stat-lbl">Dự án trò chơi</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-ic">${Icons.get('book')}</div>
+          <div><div class="stat-val">${questionCount}</div><div class="stat-lbl">Câu hỏi đã soạn</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-ic">${Icons.get('gamepad')}</div>
+          <div><div class="stat-val">${GameRegistry.getAll().length}</div><div class="stat-lbl">Hình thức trò chơi</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-ic">${Icons.get('layout')}</div>
+          <div><div class="stat-val">${TEMPLATES.length}</div><div class="stat-lbl">Mẫu theo SGK</div></div>
+        </div>
       </div>
 
       <!-- Quick Action Buttons -->
-      <div style="display: flex; gap: 12px; margin-bottom: 32px; flex-wrap: wrap;">
-        <button class="btn btn-primary btn-lg" id="btn-quick-new">
-          ${Icons.get('plus')} Tạo trò chơi mới
+      <div class="qa-grid">
+        <button class="qa-card primary" id="btn-quick-new">
+          <span class="qa-ic">${Icons.get('plus')}</span>
+          <span>Tạo trò chơi mới<small>Chọn hình thức, soạn câu hỏi</small></span>
         </button>
-        <button class="btn btn-secondary btn-lg" id="btn-quick-template">
-          ${Icons.get('layout')} Khám phá mẫu
+        <button class="qa-card" id="btn-quick-template">
+          <span class="qa-ic">${Icons.get('layout')}</span>
+          <span>Khám phá mẫu<small>${TEMPLATES.length} mẫu bám SGK</small></span>
         </button>
-        <button class="btn btn-secondary btn-lg" id="btn-quick-backup">
-          ${Icons.get('upload')} Sao lưu & Khôi phục
+        <button class="qa-card" id="btn-quick-backup">
+          <span class="qa-ic">${Icons.get('upload')}</span>
+          <span>Sao lưu & Khôi phục<small>File .tstudio an toàn</small></span>
         </button>
       </div>
 
       ${recentProject ? `
         <!-- Continue Recent Project Card -->
-        <div class="card" style="margin-bottom: 32px; border-left: 4px solid var(--color-primary); background: var(--color-surface);">
+        <div class="card continue-card">
           <div class="flex items-center justify-between" style="margin-bottom: 8px;">
             <span class="badge badge-primary">Tiếp tục gần đây</span>
             <span class="text-xs text-muted">Cập nhật: ${new Date(recentProject.updatedAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
           </div>
-          <div class="flex items-center justify-between">
-            <div>
-              <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 4px;">${recentProject.name}</h3>
-              <p style="font-size: 13px; color: var(--color-text-secondary); margin: 0;">
-                Môn: <strong>${recentProject.subject || 'Lớp học'}</strong> • Khối: <strong>${recentProject.grade || 'Tiểu học'}</strong> • Loại: <strong>${GameRegistry.get(recentProject.gameType)?.name || recentProject.gameType}</strong>
-              </p>
+          <div class="flex items-center justify-between" style="gap: 16px; flex-wrap: wrap;">
+            <div class="cell-main">
+              ${avatarFor(recentProject.name, 40)}
+              <div>
+                <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 4px;">${recentProject.name}</h3>
+                <p style="font-size: 13px; color: var(--color-text-secondary); margin: 0;">
+                  Môn: <strong>${recentProject.subject || 'Lớp học'}</strong> • Khối: <strong>${recentProject.grade || 'Tiểu học'}</strong> • Loại: <strong>${GameRegistry.get(recentProject.gameType)?.name || recentProject.gameType}</strong>
+                </p>
+              </div>
             </div>
             <button class="btn btn-primary btn-open-recent" data-id="${recentProject.id}">
               Tiếp tục chỉnh sửa →
@@ -61,13 +94,13 @@ export const DashboardView = {
       ` : ''}
 
       <!-- My Projects Section -->
-      <div style="margin-bottom: 36px;">
-        <div class="flex items-center justify-between" style="margin-bottom: 16px;">
+      <div class="view-section">
+        <div class="section-head">
           <div>
-            <h2 style="font-size: 18px; font-weight: 600;">Dự án của tôi</h2>
-            <span style="font-size: 13px; color: var(--color-text-secondary);">${projects.length} hoạt động đã tạo</span>
+            <h2>Dự án của tôi</h2>
+            <span class="sub">${projects.length} hoạt động đã tạo</span>
           </div>
-          <a href="#projects" class="text-sm font-medium" style="color: var(--color-primary);">Xem tất cả →</a>
+          <a href="#projects" class="section-link">Xem tất cả →</a>
         </div>
 
         ${projects.length === 0 ? `
@@ -94,8 +127,13 @@ export const DashboardView = {
                 ${sortedProjects.slice(0, 5).map(p => `
                   <tr>
                     <td>
-                      <div class="font-semibold" style="cursor: pointer;" onclick="location.hash='#editor?id=${p.id}'">${p.name}</div>
-                      ${p.tags && p.tags.length ? `<div class="flex gap-1" style="margin-top: 4px;">${p.tags.map(t => `<span class="badge" style="font-size: 10px;">${t}</span>`).join('')}</div>` : ''}
+                      <div class="cell-main">
+                        ${avatarFor(p.name)}
+                        <div style="min-width: 0;">
+                          <span class="row-title" onclick="location.hash='#editor?id=${p.id}'">${p.name}</span>
+                          ${p.tags && p.tags.length ? `<div class="flex gap-1" style="margin-top: 4px;">${p.tags.map(t => `<span class="badge" style="font-size: 10px;">${t}</span>`).join('')}</div>` : ''}
+                        </div>
+                      </div>
                     </td>
                     <td>${p.subject || '-'}</td>
                     <td>${p.grade || '-'}</td>
@@ -117,19 +155,19 @@ export const DashboardView = {
       </div>
 
       <!-- Pre-made Templates Section -->
-      <div>
-        <div class="flex items-center justify-between" style="margin-bottom: 16px;">
+      <div class="view-section">
+        <div class="section-head">
           <div>
-            <h2 style="font-size: 18px; font-weight: 600;">Mẫu hoạt động gợi ý cho tiết học</h2>
-            <span style="font-size: 13px; color: var(--color-text-secondary);">Chọn mẫu để tạo nhanh bài tập tương tác hoàn chỉnh</span>
+            <h2>Mẫu hoạt động gợi ý cho tiết học</h2>
+            <span class="sub">Chọn mẫu để tạo nhanh bài tập tương tác hoàn chỉnh</span>
           </div>
         </div>
 
         <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px;">
           ${TEMPLATES.slice(0, 4).map(tpl => `
-            <div class="card flex flex-col justify-between" style="border: 1px solid var(--color-border); cursor: pointer; transition: transform 0.15s, border-color 0.15s;" onmouseover="this.style.borderColor='var(--color-primary)'" onmouseout="this.style.borderColor='var(--color-border)'">
+            <div class="card tpl-card flex flex-col justify-between">
               <div>
-                <span class="badge badge-primary" style="margin-bottom: 8px;">${tpl.phaseName}</span>
+                <span class="badge badge-primary" style="margin-bottom: 8px;"><span class="phase-dot phase-${tpl.phase}"></span>${tpl.phaseName}</span>
                 <h4 style="font-size: 15px; font-weight: 600; margin-bottom: 6px;">${tpl.name}</h4>
                 <p style="font-size: 13px; color: var(--color-text-secondary); margin-bottom: 12px; line-height: 1.4;">${tpl.description}</p>
               </div>

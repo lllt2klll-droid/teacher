@@ -91,12 +91,10 @@ export const App = {
             <button class="btn btn-icon" id="btn-theme-toggle" title="Đổi chế độ sáng / tối">
               ${Icons.get('moon')}
             </button>
-            <a href="#help" class="btn btn-icon" title="Trợ giúp">
-              ${Icons.get('help')}
-            </a>
             <button class="btn btn-primary btn-sm" id="btn-topbar-new">
               ${Icons.get('plus')} Tạo trò chơi
             </button>
+            <a href="#settings" class="avatar avatar-top" title="Giáo viên - Cài đặt">GV</a>
           </div>
         </header>
 

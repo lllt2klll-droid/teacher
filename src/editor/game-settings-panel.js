@@ -11,8 +11,8 @@ export const GameSettingsPanel = {
     const viewport = p.viewport || { mode: '16:9' };
 
     container.innerHTML = `
-      <div style="padding: 12px 16px; border-bottom: 1px solid var(--color-border); font-size: 14px; font-weight: 600;">
-        Thiết kế & Cài đặt
+      <div class="panel-head">
+        <span class="panel-title">Thiết kế & Cài đặt</span>
       </div>
 
       <div style="padding: 16px; overflow-y: auto; flex: 1;">

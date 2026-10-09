@@ -15,12 +15,13 @@ export const QuestionEditor = {
 
     const renderView = () => {
       container.innerHTML = `
-        <div style="padding: 12px 16px; border-bottom: 1px solid var(--color-border); display: flex; align-items: center; justify-content: space-between;">
-          <span class="font-semibold" style="font-size: 14px;">Câu hỏi (${questions.length})</span>
-          <div class="flex gap-1">
+        <div class="panel-head">
+          <span class="panel-title">Câu hỏi</span>
+          <span style="display: flex; align-items: center; gap: 8px;">
+            <span class="panel-count">${questions.length}</span>
             <button class="btn btn-secondary btn-sm" id="btn-add-q">${Icons.get('plus')} Thêm</button>
             <button class="btn btn-secondary btn-sm" id="btn-bulk-q">Nhập nhanh</button>
-          </div>
+          </span>
         </div>
 
         <!-- Question selector badges -->

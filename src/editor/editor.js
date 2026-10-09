@@ -75,10 +75,12 @@ export const EditorView = {
         </div>
 
         <!-- Mobile panel tabs (chỉ hiện ≤860px, xem responsive.css) -->
-        <div class="editor-mobile-tabs" style="gap: 8px; padding: 8px 12px; background: var(--color-surface); border-bottom: 1px solid var(--color-border);">
-          <button class="btn btn-subtle btn-sm m-tab" data-panel="left">📝 Nội dung</button>
-          <button class="btn btn-subtle btn-sm m-tab active" data-panel="center">👁️ Xem trước</button>
-          <button class="btn btn-subtle btn-sm m-tab" data-panel="right">🎨 Thiết kế</button>
+        <div class="editor-mobile-tabs" style="padding: 8px 12px; background: var(--color-surface); border-bottom: 1px solid var(--color-border);">
+          <div class="seg">
+            <button class="m-tab" data-panel="left">📝 Nội dung</button>
+            <button class="m-tab active" data-panel="center">👁️ Xem trước</button>
+            <button class="m-tab" data-panel="right">🎨 Thiết kế</button>
+          </div>
         </div>
 
         <!-- 3-Column Workspace -->
@@ -90,11 +92,11 @@ export const EditorView = {
           <!-- Center: Interactive Live Preview -->
           <div class="editor-center-panel" id="editor-center-container">
             <!-- Viewport bar -->
-            <div style="position: absolute; top: 12px; display: flex; gap: 8px; z-index: 20; background: var(--color-surface); padding: 4px 8px; border-radius: 8px; border: 1px solid var(--color-border); box-shadow: var(--shadow-sm);">
-              <button class="btn btn-subtle btn-sm preview-device-btn active" data-mode="16-9">Màn hình rộng (16:9)</button>
-              <button class="btn btn-subtle btn-sm preview-device-btn" data-mode="4-3">Máy tính bảng (4:3)</button>
-              <button class="btn btn-subtle btn-sm preview-device-btn" data-mode="mobile">Điện thoại</button>
-              <button class="btn btn-icon btn-sm" id="btn-restart-preview" title="Chơi lại từ đầu">${Icons.get('refresh')}</button>
+            <div class="seg" style="position: absolute; top: 12px; z-index: 20;">
+              <button class="preview-device-btn active" data-mode="16-9">Màn hình rộng</button>
+              <button class="preview-device-btn" data-mode="4-3">Máy tính bảng</button>
+              <button class="preview-device-btn" data-mode="mobile">Điện thoại</button>
+              <button class="btn-icon" id="btn-restart-preview" title="Chơi lại từ đầu" style="border: none; background: transparent; cursor: pointer; padding: 7px 10px; color: var(--color-text-secondary);">${Icons.get('refresh')}</button>
             </div>
 
             <!-- Preview Target Container -->

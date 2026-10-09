@@ -40,12 +40,12 @@ export const GameLibraryView = {
         return;
       }
 
+      const catArt = { quiz: 'art-quiz', matching: 'art-matching', interactive: 'art-interactive', tools: 'art-tools' };
+
       gridEl.innerHTML = filtered.map(g => `
         <div class="game-card">
-          <div class="game-card-preview" style="background: var(--color-surface-subtle); display: flex; align-items: center; justify-content: center;">
-            <div style="font-size: 40px;">
-              ${g.id === 'quiz' ? '📝' : (g.id === 'wheel' ? '🎡' : (g.id === 'true-false' ? '⚖️' : (g.id === 'flashcard' ? '📇' : (g.id === 'matching' ? '🔗' : (g.id === 'tug-of-war' ? '🪢' : (g.id === 'race' ? '🏎️' : (g.id === 'jigsaw' ? '🧩' : (g.id === 'timer' ? '⏱️' : (g.id === 'crossword' ? '🔡' : '🎮')))))))))}
-            </div>
+          <div class="game-card-art ${catArt[g.category] || 'art-default'}">
+            ${Icons.get(g.icon || 'gamepad')}
           </div>
           <div class="game-card-body">
             <h3 class="game-card-title">${g.name}</h3>
@@ -76,27 +76,25 @@ export const GameLibraryView = {
     };
 
     container.innerHTML = `
-      <div class="view-header flex items-center justify-between" style="margin-bottom: 24px;">
-        <div>
-          <h1 style="font-size: 24px; font-weight: 700;">Thư viện Trò chơi</h1>
-          <p style="font-size: 13px; color: var(--color-text-secondary); margin-top: 2px;">
-            12 hình thức trò chơi học tập tương tác phù hợp với mọi tiết học tiểu học.
-          </p>
-        </div>
+      <div class="page-head">
+        <div class="eyebrow">Không gian soạn bài</div>
+        <h1>Thư viện Trò chơi</h1>
+        <p class="page-desc">12 hình thức trò chơi học tập tương tác phù hợp với mọi tiết học tiểu học.</p>
       </div>
 
       <!-- Categories & Search bar -->
-      <div class="card flex items-center justify-between gap-3" style="margin-bottom: 24px; padding: 12px 16px;">
-        <div class="flex gap-1" style="flex-wrap: wrap;">
-          <button class="btn btn-sm btn-cat-filter active" data-cat="all">Tất cả (${allGames.length})</button>
-          <button class="btn btn-sm btn-cat-filter" data-cat="quiz">Trắc nghiệm</button>
-          <button class="btn btn-sm btn-cat-filter" data-cat="matching">Ghép & Nối</button>
-          <button class="btn btn-sm btn-cat-filter" data-cat="interactive">Thi đấu & Lớp học</button>
-          <button class="btn btn-sm btn-cat-filter" data-cat="tools">Công cụ lớp học</button>
+      <div class="toolbar-card">
+        <div class="chip-row">
+          <button class="chip active" data-cat="all">Tất cả (${allGames.length})</button>
+          <button class="chip" data-cat="quiz">Trắc nghiệm</button>
+          <button class="chip" data-cat="matching">Ghép & Nối</button>
+          <button class="chip" data-cat="interactive">Thi đấu & Lớp học</button>
+          <button class="chip" data-cat="tools">Công cụ lớp học</button>
         </div>
 
-        <div style="min-width: 220px;">
-          <input type="text" class="input" id="inp-search-games" placeholder="Tìm kiếm trò chơi..." style="padding: 6px 12px;">
+        <div class="search-wrap">
+          <span class="search-ic">${Icons.get('search')}</span>
+          <input type="text" class="input" id="inp-search-games" placeholder="Tìm kiếm trò chơi...">
         </div>
       </div>
 
@@ -107,10 +105,10 @@ export const GameLibraryView = {
     renderGrid();
 
     // Bind category filters
-    container.querySelectorAll('.btn-cat-filter').forEach(btn => {
+    container.querySelectorAll('.chip').forEach(btn => {
       btn.onclick = () => {
-        container.querySelectorAll('.btn-cat-filter').forEach(b => b.classList.remove('btn-primary', 'active'));
-        btn.classList.add('btn-primary', 'active');
+        container.querySelectorAll('.chip').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
         currentCategory = btn.getAttribute('data-cat');
         renderGrid();
       };

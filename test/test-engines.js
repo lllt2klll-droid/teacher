@@ -256,6 +256,31 @@ const tugHtml = ExportEngine.generateStandaloneHtml({ name: 'K', gameType: 'tug-
   { questions: [{ question: 'Q?', answers: ['A', 'B'], correctAnswer: 0 }] }, 'standalone');
 assert(tugHtml.includes('hon diem') && tugHtml.includes('tugGoal'), 'File xuat keo co phan thang diem + dich');
 
+// 12. Giao dien chuyen nghiep
+console.log('\n12. Kiem tra giao dien chuyen nghiep:');
+const viewsCss = fs.readFileSync('src/styles/views.css', 'utf-8');
+['.page-head', '.stat-card', '.toolbar-card', '.chip', '.game-card-art', '.seg', '.avatar', '.continue-card', '.qa-card'].forEach(c => {
+  assert(viewsCss.includes(c), 'views.css co ' + c);
+});
+assert(fs.readFileSync('index.html', 'utf-8').includes('views.css'), 'index.html nap views.css');
+const IM = await import('../src/ui/icons.js');
+assert(typeof IM.avatarFor === 'function' && IM.avatarFor('Nguyen Van An').includes('NV'), 'avatarFor lay chu cai');
+const GR = await import('../src/core/game-registry.js');
+const missingIcon = GR.GameRegistry.getAll().filter(g => IM.Icons.get(g.icon) === IM.Icons.get('nonexistent-xyz-abc'));
+assert(missingIcon.length === 0, 'Ca 12 game deu co icon that (khong roi ve help)');
+const dashSrc = fs.readFileSync('src/dashboard/dashboard.js', 'utf-8');
+assert(!dashSrc.includes('👋'), 'Dashboard khong con emoji chao');
+assert(dashSrc.includes('stat-grid') && dashSrc.includes('daypart'), 'Dashboard co stat cards + loi chao theo buoi');
+const libSrc = fs.readFileSync('src/games/games-library-view.js', 'utf-8');
+assert(!libSrc.includes('🎡') && libSrc.includes('game-card-art'), 'Thu vien game dung art header thay emoji');
+assert(libSrc.includes('"chip"') || libSrc.includes(' chip'), 'Thu vien game dung chip loc');
+const projSrc = fs.readFileSync('src/projects/projects-view.js', 'utf-8');
+assert(projSrc.includes('avatarFor') && projSrc.includes('showExportSuccessModal'), 'Du an co avatar + xuat theo profile');
+const edSrc = fs.readFileSync('src/editor/editor.js', 'utf-8');
+assert(edSrc.includes('class="seg"') && edSrc.includes('m-tab'), 'Editor co segmented control + tab mobile');
+const appSrc = fs.readFileSync('src/app/app.js', 'utf-8');
+assert(appSrc.includes('avatar-top'), 'Topbar co avatar giao vien');
+
 console.log(`\n========================================`);
 console.log(`KẾT QUẢ: Đã vượt qua ${passed} kiểm thử, Thất bại: ${failed}`);
 if (failed > 0) process.exit(1);
